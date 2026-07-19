@@ -49,16 +49,16 @@ insert into stocks (ticker, company_name) values ('NVDA', 'NVIDIA Corporation') 
 insert into stocks (ticker, company_name) values ('WDAY', 'Workday, Inc.') on conflict (ticker) do nothing;
 insert into stocks (ticker, company_name) values ('AMZN', 'Amazon.com, Inc.') on conflict (ticker) do nothing;
 insert into stocks (ticker, company_name) values ('F', 'Ford Motor Company') on conflict (ticker) do nothing;
-insert into stocks (ticker, company_name) values ('T', 'AT&amp;T Inc.') on conflict (ticker) do nothing;
+insert into stocks (ticker, company_name) values ('T', 'AT&T Inc.') on conflict (ticker) do nothing;
 insert into stocks (ticker, company_name) values ('TSLA', 'Tesla, Inc.') on conflict (ticker) do nothing;
 insert into stocks (ticker, company_name) values ('BMY', 'Bristol-Myers Squibb Company') on conflict (ticker) do nothing;
 insert into stocks (ticker, company_name) values ('ILMN', 'Illumina, Inc.') on conflict (ticker) do nothing;
 insert into stocks (ticker, company_name) values ('AAPL', 'Apple Inc.') on conflict (ticker) do nothing;
 insert into stocks (ticker, company_name) values ('WMT', 'Walmart Inc.') on conflict (ticker) do nothing;
 insert into stocks (ticker, company_name) values ('SBUX', 'Starbucks Corporation') on conflict (ticker) do nothing;
-insert into stocks (ticker, company_name) values ('PG', 'The Procter &amp; Gamble Company') on conflict (ticker) do nothing;
+insert into stocks (ticker, company_name) values ('PG', 'The Procter & Gamble Company') on conflict (ticker) do nothing;
 insert into stocks (ticker, company_name) values ('NVS', 'Novartis AG') on conflict (ticker) do nothing;
-insert into stocks (ticker, company_name) values ('JPM', 'JPMorgan Chase &amp; Co.') on conflict (ticker) do nothing;
+insert into stocks (ticker, company_name) values ('JPM', 'JPMorgan Chase & Co.') on conflict (ticker) do nothing;
 insert into stocks (ticker, company_name) values ('MSFT', 'Microsoft Corporation') on conflict (ticker) do nothing;
 insert into stocks (ticker, company_name) values ('KMI', 'Kinder Morgan, Inc.') on conflict (ticker) do nothing;
 insert into stocks (ticker, company_name) values ('SLB', 'Schlumberger Limited') on conflict (ticker) do nothing;
@@ -76,7 +76,7 @@ insert into stocks (ticker, company_name) values ('PODD', 'Insulet Corporation')
 insert into stocks (ticker, company_name) values ('CUTR', 'Cutera, Inc.') on conflict (ticker) do nothing;
 insert into stocks (ticker, company_name) values ('IIN', 'IntriCon Corporation') on conflict (ticker) do nothing;
 insert into stocks (ticker, company_name) values ('SPG', 'Simon Property Group, Inc.') on conflict (ticker) do nothing;
-insert into stocks (ticker, company_name) values ('TFC', 'BB&amp;T CORP (Exchanged) <br> Truist Financial Corporation (Received)') on conflict (ticker) do nothing;
+insert into stocks (ticker, company_name) values ('TFC', 'BB&T CORP (Exchanged) <br> Truist Financial Corporation (Received)') on conflict (ticker) do nothing;
 insert into stocks (ticker, company_name) values ('CVS', 'CVS Health Corporation') on conflict (ticker) do nothing;
 insert into stocks (ticker, company_name) values ('MAT', 'Mattel, Inc.') on conflict (ticker) do nothing;
 insert into stocks (ticker, company_name) values ('ARCC', 'Ares Capital Corporation') on conflict (ticker) do nothing;
@@ -100,7 +100,7 @@ insert into stocks (ticker, company_name) values ('VSI', 'Vitamin Shoppe, Inc. (
 insert into stocks (ticker, company_name) values ('TYPE', 'Monotype Imaging Holdings Inc. (NASDAQ)') on conflict (ticker) do nothing;
 insert into stocks (ticker, company_name) values ('WMB', 'The Williams Companies, Inc.') on conflict (ticker) do nothing;
 insert into stocks (ticker, company_name) values ('WRK', 'WestRock Company') on conflict (ticker) do nothing;
-insert into stocks (ticker, company_name) values ('WFC', 'Wells Fargo &amp; Company') on conflict (ticker) do nothing;
+insert into stocks (ticker, company_name) values ('WFC', 'Wells Fargo & Company') on conflict (ticker) do nothing;
 insert into stocks (ticker, company_name) values ('WBA', 'Walgreens Boots Alliance, Inc.') on conflict (ticker) do nothing;
 insert into stocks (ticker, company_name) values ('VZ', 'Verizon Communications Inc.') on conflict (ticker) do nothing;
 insert into stocks (ticker, company_name) values ('VTR', 'Ventas, Inc.') on conflict (ticker) do nothing;
