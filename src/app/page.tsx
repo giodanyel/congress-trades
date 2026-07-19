@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { supabase, type Politician } from "@/lib/supabase";
 
 // Data changes as new trades/politicians are added, so always fetch fresh
@@ -32,10 +33,18 @@ export default async function Home() {
   return (
     <div className="flex flex-1 flex-col bg-white px-6 py-16 dark:bg-black">
       <div className="mx-auto w-full max-w-3xl">
-        <span className="mb-4 inline-block rounded-full border border-zinc-200 px-3 py-1 text-xs font-medium tracking-wide text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-          PHASE 2 &middot; LIVE DATABASE
-        </span>
-        <h1 className="text-4xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+        <div className="flex items-center justify-between">
+          <span className="inline-block rounded-full border border-zinc-200 px-3 py-1 text-xs font-medium tracking-wide text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+            PHASE 3 &middot; REAL TRADE DATA
+          </span>
+          <Link
+            href="/leaderboard"
+            className="text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+          >
+            Most Active Traders &rarr;
+          </Link>
+        </div>
+        <h1 className="mt-4 text-4xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
           Congress Trades
         </h1>
         <p className="mt-3 text-lg leading-relaxed text-zinc-500 dark:text-zinc-400">
@@ -66,9 +75,11 @@ export default async function Home() {
                 key={p.id}
                 className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
               >
-                <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
-                  {p.full_name}
-                </p>
+                <Link href={`/politicians/${p.id}`} className="hover:underline">
+                  <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                    {p.full_name}
+                  </p>
+                </Link>
                 <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                   {p.party.charAt(0) + p.party.slice(1).toLowerCase()} &middot;{" "}
                   {p.state} &middot;{" "}

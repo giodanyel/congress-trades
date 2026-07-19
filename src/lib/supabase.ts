@@ -32,3 +32,35 @@ export type Politician = {
   created_at: string;
   updated_at: string;
 };
+
+export type TradeType = "PURCHASE" | "SALE" | "EXCHANGE";
+export type OwnerType = "SELF" | "SPOUSE" | "JOINT" | "CHILD";
+
+export type Stock = {
+  ticker: string;
+  company_name: string;
+  created_at: string;
+};
+
+export type Trade = {
+  id: string;
+  politician_id: string;
+  ticker: string;
+  trade_type: TradeType;
+  owner: OwnerType;
+  transaction_date: string;
+  amount_min: number | null;
+  amount_max: number | null;
+  amount_label: string | null;
+  source_url: string | null;
+  created_at: string;
+};
+
+// Every dollar figure derived from trades is an ESTIMATE: the STOCK Act only
+// requires disclosure of a value RANGE (e.g. "$1,001 - $15,000"), never an
+// exact amount. We use the midpoint of that range as our best estimate.
+// This must always be labeled as an estimate in the UI, never shown as fact.
+export function estimatedTradeValue(t: Pick<Trade, "amount_min" | "amount_max">) {
+  if (t.amount_min === null || t.amount_max === null) return null;
+  return (t.amount_min + t.amount_max) / 2;
+}
