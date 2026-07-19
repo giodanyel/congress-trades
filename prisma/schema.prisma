@@ -1,0 +1,42 @@
+// Prisma schema for Congress Trades
+// Docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Party {
+  DEMOCRAT
+  REPUBLICAN
+  INDEPENDENT
+}
+
+enum Chamber {
+  SENATE
+  HOUSE
+}
+
+model Politician {
+  id          String   @id @default(cuid())
+  firstName   String
+  lastName    String
+  fullName    String
+  party       Party
+  state       String // two-letter state code, e.g. "CA"
+  chamber     Chamber
+  photoUrl    String?
+  bio         String?
+  netWorthUsd BigInt? // most recent publicly estimated net worth, in USD
+  committees  String[] // committee memberships, simple list for now
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([state])
+  @@index([party])
+  @@index([chamber])
+}
