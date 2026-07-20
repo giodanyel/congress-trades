@@ -126,7 +126,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const [{ data: politicians }, { data: existingTrades }, { data: existingStockRows }, sourceRes] =
+  const [politiciansRes, existingTradesRes, existingStockRowsRes, sourceRes] =
     await Promise.all([
       supabase.from("politicians").select("*").returns<Politician[]>(),
       supabase
@@ -137,12 +137,34 @@ export async function GET(req: NextRequest) {
       fetch(TRADES_URL, { headers: { "User-Agent": "Mozilla/5.0 (compatible; CongressTradesBot/1.0)" } }),
     ]);
 
+  if (politiciansRes.error) {
+    return NextResponse.json(
+      { error: `Loading politicians failed: ${politiciansRes.error.message}` },
+      { status: 500 }
+    );
+  }
+  if (existingTradesRes.error) {
+    return NextResponse.json(
+      { error: `Loading existing trades failed: ${existingTradesRes.error.message}` },
+      { status: 500 }
+    );
+  }
+  if (existingStockRowsRes.error) {
+    return NextResponse.json(
+      { error: `Loading existing stocks failed: ${existingStockRowsRes.error.message}` },
+      { status: 500 }
+    );
+  }
   if (!sourceRes.ok) {
     return NextResponse.json(
       { error: `Failed to fetch source data: HTTP ${sourceRes.status}` },
       { status: 502 }
     );
   }
+
+  const politicians = politiciansRes.data;
+  const existingTrades = existingTradesRes.data;
+  const existingStockRows = existingStockRowsRes.data;
 
   const sourceTrades = (await sourceRes.json()) as KadoaTrade[];
 
@@ -247,18 +269,28 @@ export async function GET(req: NextRequest) {
   if (newTradeRows.length > 0) {
     const { error } = await supabase.from("trades").insert(newTradeRows);
     if (error) {
-      return NextResponse.json({ error: `Inserting new trades: ${error.message}` }, { status: 500 });
+      return NextResponse.json(
+        {
+          error: `Inserting new trades: ${error.message}`,
+          diagnostics: { existingTradesLoaded: existingTrades?.length ?? 0 },
+        },
+        { status: 500 }
+      );
     }
   }
 
   // Backfill in small concurrent batches -- these are simple single-row
   // updates keyed by primary key, cheap enough to parallelize a bit.
   const BACKFILL_CONCURRENCY = 10;
+  const backfillErrors: string[] = [];
   for (let i = 0; i < backfillIds.length; i += BACKFILL_CONCURRENCY) {
     const slice = backfillIds.slice(i, i + BACKFILL_CONCURRENCY);
-    await Promise.all(
+    const results = await Promise.all(
       slice.map(({ id, external_id }) => supabase.from("trades").update({ external_id }).eq("id", id))
     );
+    for (const r of results) {
+      if (r.error) backfillErrors.push(r.error.message);
+    }
   }
 
   return NextResponse.json({
@@ -267,9 +299,14 @@ export async function GET(req: NextRequest) {
     newTrades: newTradeRows.length,
     newStocks: newStocks.size,
     backfilled,
+    backfillErrors: backfillErrors.length > 0 ? backfillErrors.slice(0, 5) : undefined,
     skippedAlreadyKnown,
     skippedUnmatchedPolitician,
     skippedNoTicker,
     skippedUnmappedType,
+    diagnostics: {
+      existingTradesLoaded: existingTrades?.length ?? 0,
+      existingWithExternalId: (existingTrades ?? []).filter((t) => t.external_id).length,
+    },
   });
 }
