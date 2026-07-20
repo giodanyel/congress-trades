@@ -35,10 +35,11 @@ function buildDigestHtml(
     pnl: number | null;
     roi: number;
     agg: PoliticianAgg;
+    preDisclosureMovePct: number | null;
   }[]
 ) {
   const items = rows
-    .map(({ trade, politician, pnl, roi, agg }) => {
+    .map(({ trade, politician, pnl, roi, agg, preDisclosureMovePct }) => {
       const action =
         trade.trade_type === "PURCHASE" ? "bought" : trade.trade_type === "SALE" ? "sold" : "exchanged";
       const pnlText =
@@ -48,18 +49,24 @@ function buildDigestHtml(
               maximumFractionDigits: 0,
             })} on this trade so far`;
 
-      const lagText = trade.filing_date
-        ? (() => {
-            const lag = daysBetween(trade.transaction_date, trade.filing_date!);
-            const urgency =
-              lag <= 10
-                ? "#059669"
-                : lag <= 25
-                  ? "#d97706"
-                  : "#dc2626";
-            return `<div style="margin-top:4px;font-size:12px;color:${urgency};">Disclosed ${trade.filing_date} &mdash; ${lag} day${lag === 1 ? "" : "s"} after the actual trade</div>`;
-          })()
-        : `<div style="margin-top:4px;font-size:12px;color:#a1a1aa;">Filing date unknown &mdash; STOCK Act allows up to 45 days between trade and disclosure</div>`;
+      let lagText: string;
+      if (trade.filing_date && preDisclosureMovePct !== null) {
+        // Concrete, direct number: how much the price had already moved,
+        // in the trade's own direction or against it, by the time this
+        // became public -- not just an abstract day count.
+        const lag = daysBetween(trade.transaction_date, trade.filing_date);
+        const movedWithTrade =
+          (trade.trade_type === "PURCHASE" && preDisclosureMovePct > 0) ||
+          (trade.trade_type === "SALE" && preDisclosureMovePct < 0);
+        const color = movedWithTrade ? "#dc2626" : "#059669";
+        const verb = preDisclosureMovePct >= 0 ? "risen" : "fallen";
+        lagText = `<div style="margin-top:4px;font-size:12px;color:${color};">By the ${trade.filing_date} disclosure (${lag} days later), the price had already ${verb} ${Math.abs(preDisclosureMovePct * 100).toFixed(1)}% from the trade price</div>`;
+      } else if (trade.filing_date) {
+        const lag = daysBetween(trade.transaction_date, trade.filing_date);
+        lagText = `<div style="margin-top:4px;font-size:12px;color:#a1a1aa;">Disclosed ${trade.filing_date} &mdash; ${lag} day${lag === 1 ? "" : "s"} after the trade (price move not available)</div>`;
+      } else {
+        lagText = `<div style="margin-top:4px;font-size:12px;color:#a1a1aa;">Filing date unknown &mdash; STOCK Act allows up to 45 days between trade and disclosure</div>`;
+      }
 
       return `<li style="margin-bottom:18px;line-height:1.5;padding-bottom:14px;border-bottom:1px solid #f4f4f5;">
         <div><strong>${politician.full_name}</strong>
@@ -133,7 +140,14 @@ export async function GET(req: NextRequest) {
     const value = estimatedTradeValue(t);
     const pnl = r && r.return_pct !== null && value !== null ? r.return_pct * value : null;
     const politicianAgg = aggByPoliticianId.get(t.politician_id)!;
-    return { trade: t, politician: p, pnl, roi: roiOf(politicianAgg), agg: politicianAgg };
+    return {
+      trade: t,
+      politician: p,
+      pnl,
+      roi: roiOf(politicianAgg),
+      agg: politicianAgg,
+      preDisclosureMovePct: r?.pre_disclosure_move_pct ?? null,
+    };
   });
 
   const html = buildDigestHtml(rows);

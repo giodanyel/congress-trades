@@ -74,6 +74,12 @@ export type TradeReturn = {
   price_at_trade_date: string | null;
   price_latest: number | null;
   price_latest_date: string | null;
+  price_at_filing: number | null;
+  price_at_filing_date: string | null;
+  // How much the price had already moved between the trade and the day it
+  // became public -- a concrete measure of how stale the disclosure was,
+  // not a recommendation either way.
+  pre_disclosure_move_pct: number | null;
   return_pct: number | null;
   confidence: ReturnConfidence;
   computed_at: string;

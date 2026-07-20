@@ -113,6 +113,8 @@ export default async function InterestingBuysPage() {
           {rows.map(({ trade: t, politician: p, flags }) => {
             const style = partyStyle(p.party);
             const stock = stockByTicker.get(t.ticker);
+            const r = returnByTradeId.get(t.id);
+            const preMove = r?.pre_disclosure_move_pct ?? null;
             return (
               <li
                 key={t.id}
@@ -149,6 +151,17 @@ export default async function InterestingBuysPage() {
                     </span>
                   ))}
                 </div>
+                {preMove !== null && t.filing_date ? (
+                  <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                    By the {t.filing_date} disclosure, the price had already{" "}
+                    {preMove >= 0 ? "risen" : "fallen"} {Math.abs(preMove * 100).toFixed(1)}% from
+                    the trade price.
+                  </p>
+                ) : (
+                  <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-600">
+                    Disclosure lag / price-move data not available yet for this trade.
+                  </p>
+                )}
               </li>
             );
           })}
