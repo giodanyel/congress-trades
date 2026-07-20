@@ -25,6 +25,7 @@ export const dynamic = "force-dynamic";
 const RECENT_DAYS = 45;
 const CLUSTER_WINDOW_DAYS = 60;
 const CLUSTER_MIN_MEMBERS = 2;
+const ROW_LIMIT = 20;
 
 export default async function InterestingBuysPage() {
   const [politicians, trades, returns, { data: watchlist }] =
@@ -110,6 +111,7 @@ export default async function InterestingBuysPage() {
   }
 
   rows.sort((a, b) => b.score - a.score || b.trade.transaction_date.localeCompare(a.trade.transaction_date));
+  const shown = rows.slice(0, ROW_LIMIT);
 
   return (
     <div className="flex flex-1 flex-col bg-background px-6 py-10">
@@ -118,15 +120,10 @@ export default async function InterestingBuysPage() {
           Interesting Buys
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-stone-500 dark:text-stone-400">
-          Purchases from the last {RECENT_DAYS} days worth a second look: unusually
-          large disclosed amounts, tickers multiple members bought around the
-          same time, buys from politicians currently outperforming on their
-          priced trades, or buys in a sector overseen by a committee the
-          politician sits on. This is a screen to help you look further, not
-          investment advice. The committee overlap flag uses a curated,{" "}
-          <span className="italic">non-exhaustive</span> reference of
-          committees and sectors &mdash; its absence doesn&apos;t mean there&apos;s no
-          overlap, only that this screen didn&apos;t catch one.
+          The last {RECENT_DAYS} days&apos; purchases worth a second look &mdash;
+          unusually large, clustered across several members, from a
+          currently-outperforming politician, or in a sector their committee
+          oversees. A screen to help you look further, not investment advice.
         </p>
 
         {rows.length === 0 && (
@@ -136,7 +133,7 @@ export default async function InterestingBuysPage() {
         )}
 
         <ul className="mt-6 divide-y divide-stone-100 card-pop accent-rail accent-performance dark:divide-stone-900">
-          {rows.map(({ trade: t, politician: p, flags }) => {
+          {shown.map(({ trade: t, politician: p, flags }) => {
             const style = partyStyle(p.party);
             const r = returnByTradeId.get(t.id);
             const preMove = r?.pre_disclosure_move_pct ?? null;
@@ -189,6 +186,11 @@ export default async function InterestingBuysPage() {
             );
           })}
         </ul>
+        {rows.length > ROW_LIMIT && (
+          <p className="mt-3 text-xs text-stone-400 dark:text-stone-600">
+            Showing the top {ROW_LIMIT} of {rows.length} flagged buys, ranked by how many signals each one hit.
+          </p>
+        )}
       </div>
     </div>
   );
