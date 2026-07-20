@@ -281,15 +281,20 @@ export async function GET(req: NextRequest) {
 
   // Backfill in small concurrent batches -- these are simple single-row
   // updates keyed by primary key, cheap enough to parallelize a bit.
+  // ?skipBackfill=1 skips this step entirely, for quickly checking the
+  // dedup counts without waiting on hundreds of individual row updates.
   const BACKFILL_CONCURRENCY = 40;
   const backfillErrors: string[] = [];
-  for (let i = 0; i < backfillIds.length; i += BACKFILL_CONCURRENCY) {
-    const slice = backfillIds.slice(i, i + BACKFILL_CONCURRENCY);
-    const results = await Promise.all(
-      slice.map(({ id, external_id }) => supabase.from("trades").update({ external_id }).eq("id", id))
-    );
-    for (const r of results) {
-      if (r.error) backfillErrors.push(r.error.message);
+  const skipBackfill = req.nextUrl.searchParams.get("skipBackfill") === "1";
+  if (!skipBackfill) {
+    for (let i = 0; i < backfillIds.length; i += BACKFILL_CONCURRENCY) {
+      const slice = backfillIds.slice(i, i + BACKFILL_CONCURRENCY);
+      const results = await Promise.all(
+        slice.map(({ id, external_id }) => supabase.from("trades").update({ external_id }).eq("id", id))
+      );
+      for (const r of results) {
+        if (r.error) backfillErrors.push(r.error.message);
+      }
     }
   }
 
@@ -299,7 +304,9 @@ export async function GET(req: NextRequest) {
     congressRecords: congressTrades.length,
     newTrades: newTradeRows.length,
     newStocks: newStocks.size,
-    backfilled,
+    backfilled: skipBackfill ? 0 : backfilled,
+    backfillPending: backfillIds.length,
+    backfillSkipped: skipBackfill,
     backfillErrors: backfillErrors.length > 0 ? backfillErrors.slice(0, 5) : undefined,
     skippedAlreadyKnown,
     skippedUnmatchedPolitician,
