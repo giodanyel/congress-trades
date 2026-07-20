@@ -23,6 +23,14 @@ const CAT_ACTIVE_CLASSES: Record<string, string> = {
   politicians: "bg-cat-politicians-soft text-cat-politicians",
 };
 
+const CAT_VAR: Record<string, string> = {
+  stocks: "var(--cat-stocks)",
+  news: "var(--cat-news)",
+  following: "var(--cat-following)",
+  performance: "var(--cat-performance)",
+  politicians: "var(--cat-politicians)",
+};
+
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   return (
@@ -34,12 +42,19 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
             key={link.href}
             href={link.href}
             onClick={onNavigate}
-            className={`rounded-2xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
+            className={`flex items-center gap-2.5 rounded-2xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
               active
                 ? `${CAT_ACTIVE_CLASSES[link.cat]} translate-x-0.5 shadow-sm`
                 : "text-stone-600 hover:translate-x-0.5 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-white/5"
             }`}
           >
+            <span
+              className="h-1.5 w-1.5 shrink-0 rounded-full transition-transform duration-150"
+              style={{
+                backgroundColor: CAT_VAR[link.cat],
+                transform: active ? "scale(1.4)" : "scale(1)",
+              }}
+            />
             {link.label}
           </Link>
         );
