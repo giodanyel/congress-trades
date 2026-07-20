@@ -281,7 +281,7 @@ export async function GET(req: NextRequest) {
 
   // Backfill in small concurrent batches -- these are simple single-row
   // updates keyed by primary key, cheap enough to parallelize a bit.
-  const BACKFILL_CONCURRENCY = 10;
+  const BACKFILL_CONCURRENCY = 40;
   const backfillErrors: string[] = [];
   for (let i = 0; i < backfillIds.length; i += BACKFILL_CONCURRENCY) {
     const slice = backfillIds.slice(i, i + BACKFILL_CONCURRENCY);
