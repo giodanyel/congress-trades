@@ -8,6 +8,7 @@ import {
   type TradeReturn,
   type WatchlistItem,
 } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
 import { partyStyle, relativeDate, formatPct } from "@/lib/ui";
 import { TradeTypeBadge } from "@/components/TradeTypeBadge";
 import { FollowButton } from "@/components/FollowButton";
@@ -19,9 +20,50 @@ export const dynamic = "force-dynamic";
 const TRADE_LIMIT_PER_ITEM = 8;
 
 export default async function FollowingPage() {
-  const { data: watchlist } = await supabase
+  const supabaseAuth = await createClient();
+  const {
+    data: { user },
+  } = await supabaseAuth.auth.getUser();
+
+  if (!user) {
+    return (
+      <div className="flex flex-1 flex-col bg-background px-6 py-10">
+        <div className="mx-auto w-full max-w-3xl">
+          <h1 className="text-2xl font-heading font-semibold tracking-tight text-stone-900 dark:text-stone-50">
+            Following
+          </h1>
+          <div className="mt-6 rounded-2xl border border-dashed border-stone-300 p-8 text-center dark:border-stone-700">
+            <p className="text-sm text-stone-600 dark:text-stone-300">
+              Sign in to follow politicians and tickers, and get your own
+              daily email digest.
+            </p>
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <Link
+                href="/login"
+                className="rounded-full border border-stone-200 px-4 py-2 text-sm font-medium text-stone-600 hover:border-stone-300 dark:border-white/10 dark:text-stone-300"
+              >
+                Log in
+              </Link>
+              <Link
+                href="/signup"
+                className="rounded-full bg-brand px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+              >
+                Sign up
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // RLS already scopes this to the signed-in user's own rows -- the
+  // explicit eq() below is just belt-and-suspenders clarity, not what's
+  // actually enforcing the isolation.
+  const { data: watchlist } = await supabaseAuth
     .from("watchlist_items")
     .select("*")
+    .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .returns<WatchlistItem[]>();
 

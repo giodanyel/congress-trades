@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-// No secret gate here on purpose: this app has no login system anywhere
-// (every trade page is already fully public), and a "follow" toggle isn't
-// sensitive data -- requiring a secret to click a star button would defeat
-// the point of making the UI easy to use. Writes still go through the
-// service-role client since watchlist_items only grants public SELECT via
-// RLS, not INSERT/DELETE.
+// Follow lists are now per-account, so this needs to know who's asking.
+// Uses the cookie-aware server client (not getSupabaseAdmin) so Row Level
+// Security enforces the user_id match itself -- this route can't
+// accidentally touch another user's row even if the code here had a bug.
 export async function POST(req: NextRequest) {
   let body: { kind?: string; ref_id?: string };
   try {
@@ -25,11 +23,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "ref_id is required" }, { status: 400 });
   }
 
-  const supabase = getSupabaseAdmin();
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Sign in to follow politicians and tickers." }, { status: 401 });
+  }
 
   const { data: existing, error: selectError } = await supabase
     .from("watchlist_items")
     .select("kind")
+    .eq("user_id", user.id)
     .eq("kind", kind)
     .eq("ref_id", ref_id)
     .maybeSingle();
@@ -42,12 +48,15 @@ export async function POST(req: NextRequest) {
     const { error } = await supabase
       .from("watchlist_items")
       .delete()
+      .eq("user_id", user.id)
       .eq("kind", kind)
       .eq("ref_id", ref_id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ following: false });
   } else {
-    const { error } = await supabase.from("watchlist_items").insert({ kind, ref_id });
+    const { error } = await supabase
+      .from("watchlist_items")
+      .insert({ user_id: user.id, kind, ref_id });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ following: true });
   }

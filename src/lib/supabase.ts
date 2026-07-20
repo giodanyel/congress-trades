@@ -125,6 +125,7 @@ export type TradeReturn = {
 export type WatchlistKind = "politician" | "stock";
 
 export type WatchlistItem = {
+  user_id: string;
   kind: WatchlistKind;
   ref_id: string;
   created_at: string;

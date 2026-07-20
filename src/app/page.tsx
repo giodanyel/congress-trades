@@ -1,11 +1,11 @@
 import Link from "next/link";
 import {
-  supabase,
   getCachedTrades,
   getCachedTradeReturns,
   getCachedPoliticians,
   estimatedTradeValue,
 } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
 import { partyStyle, formatUsd, formatPct, relativeDate } from "@/lib/ui";
 import { aggregateByPolitician, roiOf, alphaOf, ACTIVE_WINDOW_DAYS } from "@/lib/analytics";
 import { FollowButton } from "@/components/FollowButton";
@@ -21,13 +21,32 @@ const RECENT_BUYS_LIMIT = 8;
 const TOP_PERFORMERS_LIMIT = 6;
 
 export default async function Home() {
-  const [politicians, trades, returns, { data: watchlist }] =
-    await Promise.all([
-      getCachedPoliticians(),
-      getCachedTrades(),
-      getCachedTradeReturns(),
-      supabase.from("watchlist_items").select("*").returns<WatchlistItem[]>(),
-    ]);
+  const supabaseAuth = await createClient();
+  const [
+    politicians,
+    trades,
+    returns,
+    {
+      data: { user },
+    },
+  ] = await Promise.all([
+    getCachedPoliticians(),
+    getCachedTrades(),
+    getCachedTradeReturns(),
+    supabaseAuth.auth.getUser(),
+  ]);
+
+  // Only fetch this signed-in user's own follow state -- logged-out
+  // visitors just see every Follow button unfilled, which is correct.
+  const watchlist = user
+    ? (
+        await supabaseAuth
+          .from("watchlist_items")
+          .select("*")
+          .eq("user_id", user.id)
+          .returns<WatchlistItem[]>()
+      ).data
+    : [];
 
   const followedPoliticianIds = new Set(
     (watchlist ?? []).filter((w) => w.kind === "politician").map((w) => w.ref_id)

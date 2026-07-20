@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { Logo } from "@/components/Logo";
+import { LogoutButton } from "@/components/LogoutButton";
 
 const NAV_LINKS = [
   { href: "/", label: "Overview", cat: "stocks" },
@@ -96,7 +97,36 @@ function SearchBox({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-export default function Sidebar() {
+function AccountBox({ userEmail }: { userEmail: string | null }) {
+  if (userEmail) {
+    return (
+      <div className="flex items-center justify-between gap-2 rounded-2xl bg-brand-soft px-3 py-2.5">
+        <span className="min-w-0 truncate text-xs font-medium text-stone-700 dark:text-stone-200" title={userEmail}>
+          {userEmail}
+        </span>
+        <LogoutButton className="shrink-0 text-xs font-medium text-brand hover:underline" />
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center gap-2">
+      <Link
+        href="/login"
+        className="flex-1 rounded-2xl border border-stone-200 px-3 py-2 text-center text-xs font-medium text-stone-600 hover:border-stone-300 dark:border-white/10 dark:text-stone-300"
+      >
+        Log in
+      </Link>
+      <Link
+        href="/signup"
+        className="flex-1 rounded-2xl bg-brand px-3 py-2 text-center text-xs font-medium text-white hover:opacity-90"
+      >
+        Sign up
+      </Link>
+    </div>
+  );
+}
+
+export default function Sidebar({ userEmail }: { userEmail: string | null }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -125,6 +155,7 @@ export default function Sidebar() {
       </div>
       {open && (
         <div className="flex flex-col gap-4 border-b border-stone-200 px-4 py-4 md:hidden dark:border-white/10">
+          <AccountBox userEmail={userEmail} />
           <SearchBox onNavigate={() => setOpen(false)} />
           <NavLinks onNavigate={() => setOpen(false)} />
         </div>
@@ -138,6 +169,7 @@ export default function Sidebar() {
             Congress Trades
           </span>
         </Link>
+        <AccountBox userEmail={userEmail} />
         <SearchBox />
         <NavLinks />
         <p className="mt-auto rounded-2xl bg-stone-100 px-3 py-2.5 text-[11px] leading-relaxed text-stone-500 dark:bg-white/5 dark:text-stone-400">

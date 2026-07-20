@@ -4,22 +4,28 @@ import { sendEmail } from "@/lib/email";
 import { isAdminAuthorized } from "@/lib/adminAuth";
 import { aggregateByPolitician, roiOf, type PoliticianAgg } from "@/lib/analytics";
 import {
+  getCachedTrades,
+  getCachedTradeReturns,
+  getCachedPoliticians,
   estimatedTradeValue,
   type Trade,
   type Politician,
-  type TradeReturn,
   type WatchlistItem,
 } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const ALERT_RECIPIENT = "giovandererve@gmail.com";
 // Top performers by estimated ROI on priced trades. Intentionally NOT
 // limited to recently-active politicians here (unlike the homepage) --
 // well-known names like Pelosi may not trade often, but a new trade from
 // them is still exactly the kind of thing worth flagging.
 const TOP_PERFORMER_LIMIT = 15;
+// A brand-new account has no alert history at all, so its first run would
+// otherwise try to cram every top-performer trade ever recorded into one
+// email. Cap what's shown (everything found still gets marked sent, so the
+// backlog doesn't linger into future runs).
+const MAX_ROWS_PER_SECTION = 25;
 
 function titleCase(s: string) {
   return s.charAt(0) + s.slice(1).toLowerCase();
@@ -98,6 +104,21 @@ function buildDigestHtml(sections: { title: string; description: string; rows: R
   </div>`;
 }
 
+// auth.admin.listUsers() is paginated; loop until a page comes back short.
+async function listAllUsers(supabase: ReturnType<typeof getSupabaseAdmin>) {
+  const perPage = 200;
+  let page = 1;
+  const all: { id: string; email: string | null; email_confirmed_at: string | null }[] = [];
+  for (;;) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
+    if (error) throw new Error(error.message);
+    all.push(...data.users.map((u) => ({ id: u.id, email: u.email ?? null, email_confirmed_at: u.email_confirmed_at ?? null })));
+    if (data.users.length < perPage) break;
+    page += 1;
+  }
+  return all;
+}
+
 export async function GET(req: NextRequest) {
   if (!isAdminAuthorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -105,58 +126,45 @@ export async function GET(req: NextRequest) {
 
   const supabase = getSupabaseAdmin();
 
-  const [{ data: politicians }, { data: trades }, { data: returns }, { data: alreadyAlerted }, { data: watchlist }] =
+  const [politicians, trades, returns, users, { data: watchlist }, { data: alreadyAlerted }] =
     await Promise.all([
-      supabase.from("politicians").select("*").returns<Politician[]>(),
-      supabase.from("trades").select("*").returns<Trade[]>(),
-      supabase.from("trade_returns").select("*").returns<TradeReturn[]>(),
-      supabase.from("trade_alerts_sent").select("trade_id"),
+      getCachedPoliticians(),
+      getCachedTrades(),
+      getCachedTradeReturns(),
+      listAllUsers(supabase),
       supabase.from("watchlist_items").select("*").returns<WatchlistItem[]>(),
+      supabase.from("trade_alerts_sent").select("user_id, trade_id"),
     ]);
 
-  const politicianById = new Map((politicians ?? []).map((p) => [p.id, p]));
-  const returnByTradeId = new Map((returns ?? []).map((r) => [r.trade_id, r]));
-  const alertedIds = new Set((alreadyAlerted ?? []).map((r) => r.trade_id as string));
-  const allTrades = trades ?? [];
+  const politicianById = new Map(politicians.map((p) => [p.id, p]));
+  const returnByTradeId = new Map(returns.map((r) => [r.trade_id, r]));
+  const allTrades = trades;
 
-  const followedPoliticianIds = new Set(
-    (watchlist ?? []).filter((w) => w.kind === "politician").map((w) => w.ref_id)
-  );
-  const followedTickers = new Set(
-    (watchlist ?? []).filter((w) => w.kind === "stock").map((w) => w.ref_id)
-  );
-  const isFollowed = (t: Trade) => followedPoliticianIds.has(t.politician_id) || followedTickers.has(t.ticker);
+  // Everyone's alert history and follow list, grouped by user_id up front
+  // so the per-user loop below is just map lookups, not N more queries.
+  const alertedByUser = new Map<string, Set<string>>();
+  for (const row of alreadyAlerted ?? []) {
+    const set = alertedByUser.get(row.user_id as string) ?? new Set<string>();
+    set.add(row.trade_id as string);
+    alertedByUser.set(row.user_id as string, set);
+  }
+  const followedPoliticiansByUser = new Map<string, Set<string>>();
+  const followedTickersByUser = new Map<string, Set<string>>();
+  for (const w of watchlist ?? []) {
+    const map = w.kind === "politician" ? followedPoliticiansByUser : followedTickersByUser;
+    const set = map.get(w.user_id) ?? new Set<string>();
+    set.add(w.ref_id);
+    map.set(w.user_id, set);
+  }
 
+  // Top performers are the same list for everyone -- only the per-user
+  // "already seen" history differs.
   const agg = aggregateByPolitician(allTrades, returnByTradeId);
-
   const topPerformers = [...agg.entries()]
     .filter(([, a]) => a.pricedTrades > 0 && roiOf(a) > 0)
     .sort((a, b) => roiOf(b[1]) - roiOf(a[1]))
     .slice(0, TOP_PERFORMER_LIMIT);
   const aggByPoliticianId = new Map(topPerformers.map(([id, a]) => [id, a]));
-
-  // Followed trades take priority over the top-performer bucket: if you
-  // chose to follow someone, a new trade from them belongs in "Following"
-  // even if they'd also qualify as a top performer, not split across both.
-  const followedNewTrades = allTrades.filter((t) => !alertedIds.has(t.id) && isFollowed(t));
-  const topPerformerNewTrades = allTrades.filter(
-    (t) => !alertedIds.has(t.id) && !isFollowed(t) && aggByPoliticianId.has(t.politician_id)
-  );
-
-  const newAlerts = [...followedNewTrades, ...topPerformerNewTrades];
-
-  if (newAlerts.length === 0) {
-    return NextResponse.json({
-      sent: false,
-      newAlerts: 0,
-      followedCount: followedPoliticianIds.size + followedTickers.size,
-      topPerformers: topPerformers.length,
-      note: "No unsent trades from followed politicians/tickers or current top performers.",
-    });
-  }
-
-  followedNewTrades.sort((a, b) => b.transaction_date.localeCompare(a.transaction_date));
-  topPerformerNewTrades.sort((a, b) => b.transaction_date.localeCompare(a.transaction_date));
 
   function toRow(t: Trade): Row {
     const p = politicianById.get(t.politician_id)!;
@@ -174,53 +182,93 @@ export async function GET(req: NextRequest) {
     };
   }
 
-  const html = buildDigestHtml([
-    {
-      title: "New trades from people & tickers you follow",
-      description: "Straight from your Following list, newest first.",
-      rows: followedNewTrades.map(toRow),
-    },
-    {
-      title: "New trades from top-performing members of Congress",
-      description: "Ranked by estimated ROI on their priced trades to date.",
-      rows: topPerformerNewTrades.map(toRow),
-    },
-  ]);
+  const confirmedUsers = users.filter((u) => u.email && u.email_confirmed_at);
 
-  const subjectParts = [];
-  if (followedNewTrades.length > 0) subjectParts.push(`${followedNewTrades.length} from your Following list`);
-  if (topPerformerNewTrades.length > 0) subjectParts.push(`${topPerformerNewTrades.length} from top performers`);
+  const results: { userId: string; email: string; sent: boolean; newAlerts: number; error?: string }[] = [];
+  const alertRowsToInsert: { user_id: string; trade_id: string }[] = [];
 
-  try {
-    await sendEmail({
-      to: ALERT_RECIPIENT,
-      subject: `Congress Trades: ${subjectParts.join(" + ")}`,
-      html,
-    });
-  } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : String(err) },
-      { status: 500 }
+  for (const u of confirmedUsers) {
+    const alertedIds = alertedByUser.get(u.id) ?? new Set<string>();
+    const followedPoliticianIds = followedPoliticiansByUser.get(u.id) ?? new Set<string>();
+    const followedTickers = followedTickersByUser.get(u.id) ?? new Set<string>();
+    const isFollowed = (t: Trade) =>
+      followedPoliticianIds.has(t.politician_id) || followedTickers.has(t.ticker);
+
+    const followedNewTrades = allTrades.filter((t) => !alertedIds.has(t.id) && isFollowed(t));
+    const topPerformerNewTrades = allTrades.filter(
+      (t) => !alertedIds.has(t.id) && !isFollowed(t) && aggByPoliticianId.has(t.politician_id)
     );
+    const newAlerts = [...followedNewTrades, ...topPerformerNewTrades];
+
+    if (newAlerts.length === 0) {
+      results.push({ userId: u.id, email: u.email!, sent: false, newAlerts: 0 });
+      continue;
+    }
+
+    // Mark everything found as sent regardless of the display cap below,
+    // so an oversized backlog doesn't linger and resurface next run.
+    for (const t of newAlerts) alertRowsToInsert.push({ user_id: u.id, trade_id: t.id });
+
+    followedNewTrades.sort((a, b) => b.transaction_date.localeCompare(a.transaction_date));
+    topPerformerNewTrades.sort((a, b) => b.transaction_date.localeCompare(a.transaction_date));
+
+    const html = buildDigestHtml([
+      {
+        title: "New trades from people & tickers you follow",
+        description: "Straight from your Following list, newest first.",
+        rows: followedNewTrades.slice(0, MAX_ROWS_PER_SECTION).map(toRow),
+      },
+      {
+        title: "New trades from top-performing members of Congress",
+        description: "Ranked by estimated ROI on their priced trades to date.",
+        rows: topPerformerNewTrades.slice(0, MAX_ROWS_PER_SECTION).map(toRow),
+      },
+    ]);
+
+    const subjectParts = [];
+    if (followedNewTrades.length > 0) subjectParts.push(`${followedNewTrades.length} from your Following list`);
+    if (topPerformerNewTrades.length > 0) subjectParts.push(`${topPerformerNewTrades.length} from top performers`);
+
+    try {
+      await sendEmail({
+        to: u.email!,
+        subject: `Congress Trades: ${subjectParts.join(" + ")}`,
+        html,
+      });
+      results.push({ userId: u.id, email: u.email!, sent: true, newAlerts: newAlerts.length });
+    } catch (err) {
+      // Don't mark this user's trades as sent if the email actually
+      // failed -- pull their rows back out so they're retried next run.
+      const failedIds = new Set(newAlerts.map((t) => t.id));
+      for (let i = alertRowsToInsert.length - 1; i >= 0; i--) {
+        if (alertRowsToInsert[i].user_id === u.id && failedIds.has(alertRowsToInsert[i].trade_id)) {
+          alertRowsToInsert.splice(i, 1);
+        }
+      }
+      results.push({
+        userId: u.id,
+        email: u.email!,
+        sent: false,
+        newAlerts: newAlerts.length,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
 
-  const { error: insertError } = await supabase
-    .from("trade_alerts_sent")
-    .insert(newAlerts.map((t) => ({ trade_id: t.id })));
-
-  if (insertError) {
-    // Email already went out; surface this loudly since a failed insert
-    // here means the same trades would get re-emailed next run.
-    return NextResponse.json(
-      { sent: true, newAlerts: newAlerts.length, markSentError: insertError.message },
-      { status: 500 }
-    );
+  if (alertRowsToInsert.length > 0) {
+    const { error: insertError } = await supabase.from("trade_alerts_sent").insert(alertRowsToInsert);
+    if (insertError) {
+      return NextResponse.json(
+        { results, markSentError: insertError.message },
+        { status: 500 }
+      );
+    }
   }
 
   return NextResponse.json({
-    sent: true,
-    newAlerts: newAlerts.length,
-    followed: followedNewTrades.length,
-    topPerformers: topPerformerNewTrades.length,
+    confirmedUsers: confirmedUsers.length,
+    emailsSent: results.filter((r) => r.sent).length,
+    emailsFailed: results.filter((r) => !r.sent && r.error).length,
+    results,
   });
 }

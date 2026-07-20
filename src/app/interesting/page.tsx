@@ -1,6 +1,5 @@
 import Link from "next/link";
 import {
-  supabase,
   getCachedTrades,
   getCachedTradeReturns,
   getCachedPoliticians,
@@ -8,6 +7,7 @@ import {
   type Trade,
   type WatchlistItem,
 } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
 import { partyStyle } from "@/lib/ui";
 import { aggregateByPolitician, roiOf, isActive, sizeTier } from "@/lib/analytics";
 import { committeeConflicts } from "@/lib/committees";
@@ -28,13 +28,30 @@ const CLUSTER_MIN_MEMBERS = 2;
 const ROW_LIMIT = 20;
 
 export default async function InterestingBuysPage() {
-  const [politicians, trades, returns, { data: watchlist }] =
-    await Promise.all([
-      getCachedPoliticians(),
-      getCachedTrades(),
-      getCachedTradeReturns(),
-      supabase.from("watchlist_items").select("*").returns<WatchlistItem[]>(),
-    ]);
+  const supabaseAuth = await createClient();
+  const [
+    politicians,
+    trades,
+    returns,
+    {
+      data: { user },
+    },
+  ] = await Promise.all([
+    getCachedPoliticians(),
+    getCachedTrades(),
+    getCachedTradeReturns(),
+    supabaseAuth.auth.getUser(),
+  ]);
+
+  const watchlist = user
+    ? (
+        await supabaseAuth
+          .from("watchlist_items")
+          .select("*")
+          .eq("user_id", user.id)
+          .returns<WatchlistItem[]>()
+      ).data
+    : [];
 
   const followedPoliticianIds = new Set(
     (watchlist ?? []).filter((w) => w.kind === "politician").map((w) => w.ref_id)

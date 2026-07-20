@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import type { WatchlistKind } from "@/lib/supabase";
 
 // A plain star-toggle button. Optimistic: flips immediately on click and
@@ -19,6 +20,7 @@ export function FollowButton({
 }) {
   const [following, setFollowing] = useState(initialFollowing);
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
 
   function toggle() {
     const next = !following;
@@ -30,6 +32,11 @@ export function FollowButton({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ kind, ref_id: refId }),
         });
+        if (res.status === 401) {
+          setFollowing(!next);
+          router.push("/login");
+          return;
+        }
         if (!res.ok) throw new Error("Request failed");
         const data = await res.json();
         setFollowing(Boolean(data.following));

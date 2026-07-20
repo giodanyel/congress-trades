@@ -14,6 +14,7 @@ import { committeesFor, committeeConflicts } from "@/lib/committees";
 import { sectorForTicker } from "@/lib/sectors";
 import { FollowButton } from "@/components/FollowButton";
 import { TradeTypeBadge } from "@/components/TradeTypeBadge";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -23,16 +24,22 @@ export default async function PoliticianPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const supabaseAuth = await createClient();
 
-  const [{ data: politician }, { data: watchlistRow }] = await Promise.all([
+  const [{ data: politician }, { data: { user } }] = await Promise.all([
     supabase.from("politicians").select("*").eq("id", id).single<Politician>(),
-    supabase
-      .from("watchlist_items")
-      .select("kind")
-      .eq("kind", "politician")
-      .eq("ref_id", id)
-      .maybeSingle(),
+    supabaseAuth.auth.getUser(),
   ]);
+
+  const { data: watchlistRow } = user
+    ? await supabaseAuth
+        .from("watchlist_items")
+        .select("kind")
+        .eq("user_id", user.id)
+        .eq("kind", "politician")
+        .eq("ref_id", id)
+        .maybeSingle()
+    : { data: null };
 
   if (!politician) notFound();
 

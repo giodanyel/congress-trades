@@ -11,6 +11,7 @@ import {
 import { partyStyle } from "@/lib/ui";
 import { FollowButton } from "@/components/FollowButton";
 import { TradeTypeBadge } from "@/components/TradeTypeBadge";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -21,16 +22,22 @@ export default async function StockPage({
 }) {
   const { ticker: rawTicker } = await params;
   const ticker = rawTicker.toUpperCase();
+  const supabaseAuth = await createClient();
 
-  const [{ data: stock }, { data: watchlistRow }] = await Promise.all([
+  const [{ data: stock }, { data: { user } }] = await Promise.all([
     supabase.from("stocks").select("*").eq("ticker", ticker).single<Stock>(),
-    supabase
-      .from("watchlist_items")
-      .select("kind")
-      .eq("kind", "stock")
-      .eq("ref_id", ticker)
-      .maybeSingle(),
+    supabaseAuth.auth.getUser(),
   ]);
+
+  const { data: watchlistRow } = user
+    ? await supabaseAuth
+        .from("watchlist_items")
+        .select("kind")
+        .eq("user_id", user.id)
+        .eq("kind", "stock")
+        .eq("ref_id", ticker)
+        .maybeSingle()
+    : { data: null };
 
   if (!stock) notFound();
 
