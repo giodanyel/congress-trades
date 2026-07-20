@@ -38,7 +38,7 @@ export default async function FollowingPage() {
     return (
       <div className="flex flex-1 flex-col bg-background px-6 py-10">
         <div className="mx-auto w-full max-w-3xl">
-          <h1 className="text-2xl font-semibold tracking-tight text-stone-900 dark:text-stone-50">
+          <h1 className="text-2xl font-heading font-semibold tracking-tight text-stone-900 dark:text-stone-50">
             Following
           </h1>
           <div className="mt-6 rounded-2xl border border-dashed border-stone-300 p-8 text-center dark:border-stone-700">
@@ -97,7 +97,7 @@ export default async function FollowingPage() {
   return (
     <div className="flex flex-1 flex-col bg-background px-6 py-10">
       <div className="mx-auto w-full max-w-3xl">
-        <h1 className="text-2xl font-semibold tracking-tight text-stone-900 dark:text-stone-50">
+        <h1 className="text-2xl font-heading font-semibold tracking-tight text-stone-900 dark:text-stone-50">
           Following
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-stone-500 dark:text-stone-400">
@@ -108,7 +108,7 @@ export default async function FollowingPage() {
 
         {followedPoliticianIds.length > 0 && (
           <>
-            <h2 className="mt-8 mb-3 text-sm font-medium uppercase tracking-wide text-stone-500 dark:text-stone-400">
+            <h2 className="mt-8 mb-3 font-heading text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--cat-following)" }}>
               Politicians you follow
             </h2>
             <div className="flex flex-wrap gap-2">
@@ -119,7 +119,7 @@ export default async function FollowingPage() {
                 return (
                   <div
                     key={id}
-                    className="flex items-center gap-2 rounded-full border border-stone-200 py-1 pl-1 pr-3 dark:border-white/10"
+                    className="card-pop flex items-center gap-2 rounded-full py-1 pl-1 pr-3"
                   >
                     <span className={`h-2 w-2 shrink-0 rounded-full ${style.dot}`} />
                     <Link href={`/politicians/${p.id}`} className="text-sm font-medium text-stone-800 hover:underline dark:text-stone-100">
@@ -135,7 +135,7 @@ export default async function FollowingPage() {
 
         {followedTickers.length > 0 && (
           <>
-            <h2 className="mt-6 mb-3 text-sm font-medium uppercase tracking-wide text-stone-500 dark:text-stone-400">
+            <h2 className="mt-6 mb-3 font-heading text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--cat-stocks)" }}>
               Tickers you follow
             </h2>
             <div className="flex flex-wrap gap-2">
@@ -144,7 +144,7 @@ export default async function FollowingPage() {
                 return (
                   <div
                     key={ticker}
-                    className="flex items-center gap-2 rounded-full border border-stone-200 py-1 pl-3 pr-3 dark:border-white/10"
+                    className="card-pop flex items-center gap-2 rounded-full py-1 pl-3 pr-3"
                   >
                     <Link href={`/stocks/${ticker}`} className="text-sm font-medium text-stone-800 hover:underline dark:text-stone-100">
                       {ticker}
@@ -158,7 +158,7 @@ export default async function FollowingPage() {
           </>
         )}
 
-        <h2 className="mt-8 mb-4 text-sm font-medium uppercase tracking-wide text-stone-500 dark:text-stone-400">
+        <h2 className="mt-8 mb-4 font-heading text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--cat-following)" }}>
           Recent activity
         </h2>
 
@@ -169,7 +169,7 @@ export default async function FollowingPage() {
         )}
 
         <ul className="flex flex-col gap-3">
-          {trades.slice(0, TRADE_LIMIT_PER_ITEM * Math.max(1, followedPoliticianIds.length + followedTickers.length)).map((t) => {
+          {trades.slice(0, TRADE_LIMIT_PER_ITEM * Math.max(1, followedPoliticianIds.length + followedTickers.length)).map((t, i) => {
             const p = politicianById.get(t.politician_id);
             const stock = stockByTicker.get(t.ticker);
             const r = returnByTradeId.get(t.id);
@@ -180,7 +180,7 @@ export default async function FollowingPage() {
                 ? r.return_pct * ((t.amount_min + t.amount_max) / 2)
                 : null;
             return (
-              <li key={t.id} className="rounded-2xl border border-stone-200 p-4 dark:border-stone-800">
+              <li key={t.id} className="card-pop animate-in accent-rail accent-following p-4" style={{ animationDelay: `${Math.min(i, 8) * 30}ms` }}>
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-stone-900 dark:text-stone-50">

@@ -62,7 +62,7 @@ export default async function StockPage({
     <div className="flex flex-1 flex-col bg-background px-6 py-10">
       <div className="mx-auto w-full max-w-3xl">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-semibold tracking-tight text-stone-900 dark:text-stone-50">
+          <h1 className="text-3xl font-heading font-semibold tracking-tight text-stone-900 dark:text-stone-50">
             {stock.ticker}
           </h1>
           <FollowButton kind="stock" refId={stock.ticker} initialFollowing={!!watchlistRow} />
@@ -75,7 +75,7 @@ export default async function StockPage({
           Congressional trades ({trades?.length ?? 0})
         </h2>
 
-        <div className="overflow-x-auto rounded-2xl border border-stone-200 dark:border-stone-800">
+        <div className="overflow-x-auto card-pop accent-rail accent-stocks">
           <table className="w-full text-left text-sm">
             <thead className="bg-stone-50 text-xs uppercase text-stone-500 dark:bg-stone-950 dark:text-stone-400">
               <tr>

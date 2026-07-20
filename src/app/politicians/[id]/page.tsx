@@ -101,7 +101,7 @@ export default async function PoliticianPage({
       <div className="mx-auto w-full max-w-3xl">
         <div className="flex flex-wrap items-center gap-3">
           <span className={`h-3 w-3 shrink-0 rounded-full ${style.dot}`} />
-          <h1 className="text-3xl font-semibold tracking-tight text-stone-900 dark:text-stone-50">
+          <h1 className="text-3xl font-heading font-semibold tracking-tight text-stone-900 dark:text-stone-50">
             {politician.full_name}
           </h1>
           <FollowButton kind="politician" refId={politician.id} initialFollowing={!!watchlistRow} />
@@ -132,20 +132,20 @@ export default async function PoliticianPage({
         )}
 
         <div className="mt-8 grid grid-cols-3 gap-3">
-          <div className="rounded-2xl border border-stone-200 p-4 dark:border-stone-800">
-            <p className="text-2xl font-semibold text-stone-900 dark:text-stone-50">
+          <div className="card-pop accent-rail accent-politicians p-4">
+            <p className="font-heading text-2xl font-semibold text-stone-900 dark:text-stone-50">
               {trades?.length ?? 0}
             </p>
             <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">Total trades</p>
           </div>
-          <div className="rounded-2xl border border-stone-200 p-4 dark:border-stone-800">
-            <p className="text-2xl font-semibold text-stone-900 dark:text-stone-50">
+          <div className="card-pop accent-rail accent-performance p-4">
+            <p className="font-heading text-2xl font-semibold text-stone-900 dark:text-stone-50">
               {purchaseCount} / {saleCount}
             </p>
             <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">Buys / Sells</p>
           </div>
-          <div className="rounded-2xl border border-stone-200 p-4 dark:border-stone-800">
-            <p className="text-2xl font-semibold text-stone-900 dark:text-stone-50">
+          <div className="card-pop accent-rail accent-stocks p-4">
+            <p className="font-heading text-2xl font-semibold text-stone-900 dark:text-stone-50">
               {formatUsd(totalEstimatedVolume)}
             </p>
             <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
@@ -163,7 +163,7 @@ export default async function PoliticianPage({
           Trade history
         </h2>
 
-        <div className="overflow-x-auto rounded-2xl border border-stone-200 dark:border-stone-800">
+        <div className="overflow-x-auto card-pop accent-rail accent-politicians">
           <table className="w-full text-left text-sm">
             <thead className="bg-stone-50 text-xs uppercase text-stone-500 dark:bg-stone-950 dark:text-stone-400">
               <tr>

@@ -39,7 +39,7 @@ export default async function RoiLeaderboardPage() {
     <div className="flex flex-1 flex-col bg-background px-6 py-10">
       <div className="mx-auto w-full max-w-3xl">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold tracking-tight text-stone-900 dark:text-stone-50">
+          <h1 className="text-2xl font-heading font-semibold tracking-tight text-stone-900 dark:text-stone-50">
             Top Performers
           </h1>
           <Link
@@ -73,7 +73,7 @@ export default async function RoiLeaderboardPage() {
           </div>
         )}
 
-        <div className="mt-6 overflow-x-auto rounded-2xl border border-stone-200 dark:border-stone-800">
+        <div className="mt-6 overflow-x-auto card-pop accent-rail accent-performance">
           <table className="w-full text-left text-sm">
             <thead className="bg-stone-50 text-xs uppercase text-stone-500 dark:bg-stone-950 dark:text-stone-400">
               <tr>

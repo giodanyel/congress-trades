@@ -113,7 +113,7 @@ export default async function InterestingBuysPage() {
   return (
     <div className="flex flex-1 flex-col bg-background px-6 py-10">
       <div className="mx-auto w-full max-w-3xl">
-        <h1 className="text-2xl font-semibold tracking-tight text-stone-900 dark:text-stone-50">
+        <h1 className="text-2xl font-heading font-semibold tracking-tight text-stone-900 dark:text-stone-50">
           Interesting Buys
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-stone-500 dark:text-stone-400">
@@ -135,7 +135,7 @@ export default async function InterestingBuysPage() {
         )}
 
         <ul className="mt-6 flex flex-col gap-3">
-          {rows.map(({ trade: t, politician: p, flags }) => {
+          {rows.map(({ trade: t, politician: p, flags }, i) => {
             const style = partyStyle(p.party);
             const stock = stockByTicker.get(t.ticker);
             const r = returnByTradeId.get(t.id);
@@ -143,7 +143,8 @@ export default async function InterestingBuysPage() {
             return (
               <li
                 key={t.id}
-                className="rounded-2xl border border-stone-200 p-4 dark:border-stone-800"
+                className="card-pop animate-in accent-rail accent-performance p-4"
+                style={{ animationDelay: `${Math.min(i, 8) * 30}ms` }}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">

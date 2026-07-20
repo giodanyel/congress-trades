@@ -57,7 +57,7 @@ export default async function PoliticiansDirectoryPage({
   return (
     <div className="flex flex-1 flex-col bg-background px-6 py-12">
       <div className="mx-auto w-full max-w-4xl">
-        <h1 className="text-2xl font-semibold tracking-tight text-stone-900 dark:text-stone-50">
+        <h1 className="text-2xl font-heading font-semibold tracking-tight text-stone-900 dark:text-stone-50">
           All Politicians
         </h1>
         <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
@@ -89,7 +89,7 @@ export default async function PoliticiansDirectoryPage({
             return (
               <li
                 key={p.id}
-                className="rounded-2xl border border-stone-200 p-4 transition-colors hover:border-stone-300 dark:border-stone-800 dark:hover:border-stone-700"
+                className="card-pop accent-rail accent-politicians p-4"
               >
                 <Link href={`/politicians/${p.id}`} className="flex items-center gap-3">
                   <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${style.dot}`} />

@@ -19,7 +19,7 @@ const PAD_BOTTOM = 24;
 export function PerformanceChart({ points }: { points: ChartPoint[] }) {
   if (points.length < 2) {
     return (
-      <div className="flex h-[200px] items-center justify-center rounded-2xl border border-stone-200 text-sm text-stone-400 dark:border-stone-800 dark:text-stone-600">
+      <div className="flex h-[200px] items-center justify-center card-pop text-sm text-stone-400 dark:text-stone-600">
         Need at least 2 priced trades to chart a trend.
       </div>
     );

@@ -74,7 +74,7 @@ export default async function Home() {
   return (
     <div className="flex flex-1 flex-col bg-background px-6 py-10">
       <div className="mx-auto w-full max-w-4xl">
-        <h1 className="text-3xl font-semibold tracking-tight text-stone-900 dark:text-stone-50">
+        <h1 className="text-3xl font-heading font-semibold tracking-tight text-stone-900 dark:text-stone-50">
           Congress Trades
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-stone-500 dark:text-stone-400">
@@ -87,25 +87,25 @@ export default async function Home() {
             than making a first-time visitor read tables to understand
             scope. */}
         <div className="mt-6 grid grid-cols-3 gap-3">
-          <div className="rounded-2xl bg-brand-soft px-4 py-3">
-            <p className="text-xl font-semibold text-brand">{(politicians ?? []).length}</p>
+          <div className="card-pop animate-in px-4 py-3" style={{ backgroundColor: "var(--cat-politicians-soft)" }}>
+            <p className="font-heading text-xl font-semibold" style={{ color: "var(--cat-politicians)" }}>{(politicians ?? []).length}</p>
             <p className="text-xs text-stone-600 dark:text-stone-300">Politicians tracked</p>
           </div>
-          <div className="rounded-2xl bg-brand-soft px-4 py-3">
-            <p className="text-xl font-semibold text-brand">
+          <div className="card-pop animate-in px-4 py-3" style={{ backgroundColor: "var(--cat-stocks-soft)", animationDelay: "60ms" }}>
+            <p className="font-heading text-xl font-semibold" style={{ color: "var(--cat-stocks)" }}>
               {(trades ?? []).length.toLocaleString("en-US")}
             </p>
             <p className="text-xs text-stone-600 dark:text-stone-300">Trades disclosed</p>
           </div>
-          <div className="rounded-2xl bg-brand-soft px-4 py-3">
-            <p className="text-xl font-semibold text-brand">Daily</p>
+          <div className="card-pop animate-in px-4 py-3" style={{ backgroundColor: "var(--cat-following-soft)", animationDelay: "120ms" }}>
+            <p className="font-heading text-xl font-semibold" style={{ color: "var(--cat-following)" }}>Daily</p>
             <p className="text-xs text-stone-600 dark:text-stone-300">Data refresh</p>
           </div>
         </div>
 
         {/* Top performers, currently active */}
         <div className="mt-10 flex items-center justify-between">
-          <h2 className="text-sm font-medium uppercase tracking-wide text-stone-500 dark:text-stone-400">
+          <h2 className="font-heading text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--cat-performance)" }}>
             Top Performers, Currently Active
           </h2>
           <Link
@@ -139,11 +139,12 @@ export default async function Home() {
             return (
               <div
                 key={row.politician.id}
-                className={`relative rounded-2xl border p-4 transition-colors ${
+                className={`card-pop animate-in relative p-4 ${
                   positive
-                    ? "border-emerald-200 bg-emerald-50/50 hover:border-emerald-300 dark:border-emerald-900 dark:bg-emerald-950/20"
-                    : "border-red-200 bg-red-50/50 hover:border-red-300 dark:border-red-900 dark:bg-red-950/20"
+                    ? "bg-emerald-50/50 dark:bg-emerald-950/20"
+                    : "bg-red-50/50 dark:bg-red-950/20"
                 }`}
+                style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
               >
                 <div className="absolute right-3 top-3">
                   <FollowButton
@@ -194,7 +195,7 @@ export default async function Home() {
 
         {/* Latest buys */}
         <div className="mt-12 flex items-center justify-between">
-          <h2 className="text-sm font-medium uppercase tracking-wide text-stone-500 dark:text-stone-400">
+          <h2 className="font-heading text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--cat-stocks)" }}>
             Latest Buys
           </h2>
           <Link
@@ -211,7 +212,7 @@ export default async function Home() {
           </div>
         )}
 
-        <ul className="mt-4 divide-y divide-stone-100 rounded-2xl border border-stone-200 dark:divide-stone-900 dark:border-stone-800">
+        <ul className="mt-4 divide-y divide-stone-100 card-pop accent-rail accent-stocks dark:divide-stone-900">
           {recentBuys.map((t) => {
             const p = politicianById.get(t.politician_id);
             const stock = stockByTicker.get(t.ticker);

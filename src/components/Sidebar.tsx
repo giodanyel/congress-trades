@@ -6,13 +6,22 @@ import { useState } from "react";
 import { Logo } from "@/components/Logo";
 
 const NAV_LINKS = [
-  { href: "/", label: "Overview" },
-  { href: "/following", label: "Following" },
-  { href: "/interesting", label: "Interesting Buys" },
-  { href: "/leaderboard/roi", label: "Top Performers" },
-  { href: "/leaderboard", label: "Most Active" },
-  { href: "/politicians", label: "All Politicians" },
-];
+  { href: "/", label: "Overview", cat: "stocks" },
+  { href: "/news", label: "Market News", cat: "news" },
+  { href: "/following", label: "Following", cat: "following" },
+  { href: "/interesting", label: "Interesting Buys", cat: "performance" },
+  { href: "/leaderboard/roi", label: "Top Performers", cat: "performance" },
+  { href: "/leaderboard", label: "Most Active", cat: "politicians" },
+  { href: "/politicians", label: "All Politicians", cat: "politicians" },
+] as const;
+
+const CAT_ACTIVE_CLASSES: Record<string, string> = {
+  stocks: "bg-cat-stocks-soft text-cat-stocks",
+  news: "bg-cat-news-soft text-cat-news",
+  following: "bg-cat-following-soft text-cat-following",
+  performance: "bg-cat-performance-soft text-cat-performance",
+  politicians: "bg-cat-politicians-soft text-cat-politicians",
+};
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
@@ -25,10 +34,10 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
             key={link.href}
             href={link.href}
             onClick={onNavigate}
-            className={`rounded-2xl px-3 py-2.5 text-sm font-medium transition-colors ${
+            className={`rounded-2xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
               active
-                ? "bg-brand-soft text-brand"
-                : "text-stone-600 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-white/5"
+                ? `${CAT_ACTIVE_CLASSES[link.cat]} translate-x-0.5 shadow-sm`
+                : "text-stone-600 hover:translate-x-0.5 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-white/5"
             }`}
           >
             {link.label}
@@ -79,9 +88,9 @@ export default function Sidebar() {
     <>
       {/* Mobile top bar with dropdown toggle */}
       <div className="flex items-center justify-between border-b border-stone-200 px-4 py-3 md:hidden dark:border-white/10">
-        <Link href="/" className="flex items-center gap-2">
-          <Logo className="h-7 w-7" />
-          <span className="text-sm font-semibold tracking-tight text-stone-900 dark:text-stone-50">
+        <Link href="/" className="group flex items-center gap-2">
+          <Logo className="h-7 w-7 transition-transform duration-200 group-hover:scale-110" />
+          <span className="font-heading text-sm font-semibold tracking-tight text-stone-900 dark:text-stone-50">
             Congress Trades
           </span>
         </Link>
@@ -108,9 +117,9 @@ export default function Sidebar() {
 
       {/* Desktop sidebar */}
       <aside className="hidden w-64 shrink-0 flex-col gap-6 border-r border-stone-200 px-4 py-8 md:flex dark:border-white/10">
-        <Link href="/" className="flex items-center gap-2.5 px-1">
-          <Logo className="h-9 w-9" />
-          <span className="text-base font-semibold tracking-tight text-stone-900 dark:text-stone-50">
+        <Link href="/" className="group flex items-center gap-2.5 px-1">
+          <Logo className="h-9 w-9 transition-transform duration-200 group-hover:scale-110" />
+          <span className="font-heading text-base font-semibold tracking-tight text-stone-900 dark:text-stone-50">
             Congress Trades
           </span>
         </Link>
