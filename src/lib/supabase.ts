@@ -89,3 +89,11 @@ export type TradeReturn = {
   confidence: ReturnConfidence;
   computed_at: string;
 };
+
+export type WatchlistKind = "politician" | "stock";
+
+export type WatchlistItem = {
+  kind: WatchlistKind;
+  ref_id: string;
+  created_at: string;
+};

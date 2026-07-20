@@ -8,7 +8,9 @@ import {
   type Politician,
   type TradeReturn,
 } from "@/lib/supabase";
-import { partyStyle, titleCase } from "@/lib/ui";
+import { partyStyle } from "@/lib/ui";
+import { FollowButton } from "@/components/FollowButton";
+import { TradeTypeBadge } from "@/components/TradeTypeBadge";
 
 export const dynamic = "force-dynamic";
 
@@ -20,11 +22,15 @@ export default async function StockPage({
   const { ticker: rawTicker } = await params;
   const ticker = rawTicker.toUpperCase();
 
-  const { data: stock } = await supabase
-    .from("stocks")
-    .select("*")
-    .eq("ticker", ticker)
-    .single<Stock>();
+  const [{ data: stock }, { data: watchlistRow }] = await Promise.all([
+    supabase.from("stocks").select("*").eq("ticker", ticker).single<Stock>(),
+    supabase
+      .from("watchlist_items")
+      .select("kind")
+      .eq("kind", "stock")
+      .eq("ref_id", ticker)
+      .maybeSingle(),
+  ]);
 
   if (!stock) notFound();
 
@@ -55,9 +61,12 @@ export default async function StockPage({
   return (
     <div className="flex flex-1 flex-col bg-background px-6 py-10">
       <div className="mx-auto w-full max-w-3xl">
-        <h1 className="text-3xl font-semibold tracking-tight text-stone-900 dark:text-stone-50">
-          {stock.ticker}
-        </h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-3xl font-semibold tracking-tight text-stone-900 dark:text-stone-50">
+            {stock.ticker}
+          </h1>
+          <FollowButton kind="stock" refId={stock.ticker} initialFollowing={!!watchlistRow} />
+        </div>
         <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
           {stock.company_name}
         </p>
@@ -103,17 +112,7 @@ export default async function StockPage({
                       )}
                     </td>
                     <td className="px-4 py-2">
-                      <span
-                        className={
-                          t.trade_type === "PURCHASE"
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : t.trade_type === "SALE"
-                              ? "text-red-600 dark:text-red-400"
-                              : "text-stone-500"
-                        }
-                      >
-                        {titleCase(t.trade_type)}
-                      </span>
+                      <TradeTypeBadge type={t.trade_type} />
                     </td>
                     <td className="px-4 py-2 text-stone-600 dark:text-stone-300">
                       {t.amount_label}

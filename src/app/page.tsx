@@ -11,6 +11,8 @@ import { partyStyle, formatUsd, formatPct, relativeDate, titleCase } from "@/lib
 import { aggregateByPolitician, roiOf, alphaOf, ACTIVE_WINDOW_DAYS } from "@/lib/analytics";
 import { sectorForTicker } from "@/lib/sectors";
 import { committeeConflicts } from "@/lib/committees";
+import { FollowButton } from "@/components/FollowButton";
+import type { WatchlistItem } from "@/lib/supabase";
 
 // Data changes as new trades/politicians are added, so always fetch fresh
 // instead of baking a snapshot in at build time.
@@ -20,13 +22,18 @@ const RECENT_BUYS_LIMIT = 12;
 const TOP_PERFORMERS_LIMIT = 8;
 
 export default async function Home() {
-  const [{ data: politicians }, { data: trades }, { data: returns }, { data: stocks }] =
+  const [{ data: politicians }, { data: trades }, { data: returns }, { data: stocks }, { data: watchlist }] =
     await Promise.all([
       supabase.from("politicians").select("*").returns<Politician[]>(),
       supabase.from("trades").select("*").returns<Trade[]>(),
       supabase.from("trade_returns").select("*").returns<TradeReturn[]>(),
       supabase.from("stocks").select("*").returns<Stock[]>(),
+      supabase.from("watchlist_items").select("*").returns<WatchlistItem[]>(),
     ]);
+
+  const followedPoliticianIds = new Set(
+    (watchlist ?? []).filter((w) => w.kind === "politician").map((w) => w.ref_id)
+  );
 
   const politicianById = new Map((politicians ?? []).map((p) => [p.id, p]));
   const stockByTicker = new Map((stocks ?? []).map((s) => [s.ticker, s]));
@@ -75,6 +82,26 @@ export default async function Home() {
           ranges, never exact amounts.
         </p>
 
+        {/* Quick orientation stats -- a friendly at-a-glance strip rather
+            than making a first-time visitor read tables to understand
+            scope. */}
+        <div className="mt-6 grid grid-cols-3 gap-3">
+          <div className="rounded-2xl bg-brand-soft px-4 py-3">
+            <p className="text-xl font-semibold text-brand">{(politicians ?? []).length}</p>
+            <p className="text-xs text-stone-600 dark:text-stone-300">Politicians tracked</p>
+          </div>
+          <div className="rounded-2xl bg-brand-soft px-4 py-3">
+            <p className="text-xl font-semibold text-brand">
+              {(trades ?? []).length.toLocaleString("en-US")}
+            </p>
+            <p className="text-xs text-stone-600 dark:text-stone-300">Trades disclosed</p>
+          </div>
+          <div className="rounded-2xl bg-brand-soft px-4 py-3">
+            <p className="text-xl font-semibold text-brand">Daily</p>
+            <p className="text-xs text-stone-600 dark:text-stone-300">Data refresh</p>
+          </div>
+        </div>
+
         {/* Top performers, currently active */}
         <div className="mt-10 flex items-center justify-between">
           <h2 className="text-sm font-medium uppercase tracking-wide text-stone-500 dark:text-stone-400">
@@ -109,48 +136,57 @@ export default async function Home() {
             const style = partyStyle(row.politician.party);
             const positive = row.roi >= 0;
             return (
-              <Link
+              <div
                 key={row.politician.id}
-                href={`/politicians/${row.politician.id}`}
-                className={`rounded-2xl border p-4 transition-colors ${
+                className={`relative rounded-2xl border p-4 transition-colors ${
                   positive
                     ? "border-emerald-200 bg-emerald-50/50 hover:border-emerald-300 dark:border-emerald-900 dark:bg-emerald-950/20"
                     : "border-red-200 bg-red-50/50 hover:border-red-300 dark:border-red-900 dark:bg-red-950/20"
                 }`}
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-stone-400">#{i + 1}</span>
-                    <span className={`h-2.5 w-2.5 rounded-full ${style.dot}`} />
-                    <p className="text-sm font-medium text-stone-900 dark:text-stone-50">
-                      {row.politician.full_name}
-                    </p>
-                  </div>
-                  <span
-                    className={`text-sm font-semibold ${
-                      positive
-                        ? "text-emerald-600 dark:text-emerald-400"
-                        : "text-red-600 dark:text-red-400"
-                    }`}
-                  >
-                    {formatPct(row.roi)}
-                  </span>
+                <div className="absolute right-3 top-3">
+                  <FollowButton
+                    kind="politician"
+                    refId={row.politician.id}
+                    initialFollowing={followedPoliticianIds.has(row.politician.id)}
+                    size="sm"
+                  />
                 </div>
-                <p className="mt-2 text-xs text-stone-500 dark:text-stone-400">
-                  {style.label} &middot; {row.politician.state} &middot; last trade{" "}
-                  {relativeDate(row.agg.lastTradeDate)}
-                  {row.alpha !== null && (
-                    <>
-                      {" "}
-                      &middot;{" "}
-                      <span className={row.alpha >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}>
-                        {row.alpha >= 0 ? "+" : ""}
-                        {(row.alpha * 100).toFixed(0)} pts vs S&amp;P 500
-                      </span>
-                    </>
-                  )}
-                </p>
-              </Link>
+                <Link href={`/politicians/${row.politician.id}`} className="block pr-20">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-stone-400">#{i + 1}</span>
+                      <span className={`h-2.5 w-2.5 rounded-full ${style.dot}`} />
+                      <p className="text-sm font-medium text-stone-900 dark:text-stone-50">
+                        {row.politician.full_name}
+                      </p>
+                    </div>
+                    <span
+                      className={`text-sm font-semibold ${
+                        positive
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-red-600 dark:text-red-400"
+                      }`}
+                    >
+                      {formatPct(row.roi)}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs text-stone-500 dark:text-stone-400">
+                    {style.label} &middot; {row.politician.state} &middot; last trade{" "}
+                    {relativeDate(row.agg.lastTradeDate)}
+                    {row.alpha !== null && (
+                      <>
+                        {" "}
+                        &middot;{" "}
+                        <span className={row.alpha >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}>
+                          {row.alpha >= 0 ? "+" : ""}
+                          {(row.alpha * 100).toFixed(0)} pts vs S&amp;P 500
+                        </span>
+                      </>
+                    )}
+                  </p>
+                </Link>
+              </div>
             );
           })}
         </div>
@@ -212,9 +248,19 @@ export default async function Home() {
                     </p>
                   </div>
                 </div>
-                <span className="shrink-0 text-sm font-medium text-stone-700 dark:text-stone-300">
-                  {t.amount_label ?? formatUsd(estimatedTradeValue(t))}
-                </span>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className="text-sm font-medium text-stone-700 dark:text-stone-300">
+                    {t.amount_label ?? formatUsd(estimatedTradeValue(t))}
+                  </span>
+                  {p && (
+                    <FollowButton
+                      kind="politician"
+                      refId={p.id}
+                      initialFollowing={followedPoliticianIds.has(p.id)}
+                      size="sm"
+                    />
+                  )}
+                </div>
               </li>
             );
           })}

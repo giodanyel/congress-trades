@@ -7,6 +7,7 @@ import { Logo } from "@/components/Logo";
 
 const NAV_LINKS = [
   { href: "/", label: "Overview" },
+  { href: "/following", label: "Following" },
   { href: "/interesting", label: "Interesting Buys" },
   { href: "/leaderboard/roi", label: "Top Performers" },
   { href: "/leaderboard", label: "Most Active" },

@@ -5,11 +5,14 @@ import {
   type Trade,
   type Stock,
   type TradeReturn,
+  type WatchlistItem,
 } from "@/lib/supabase";
 import { partyStyle, relativeDate, titleCase } from "@/lib/ui";
 import { aggregateByPolitician, roiOf, isActive, sizeTier } from "@/lib/analytics";
 import { committeeConflicts } from "@/lib/committees";
 import { sectorForTicker } from "@/lib/sectors";
+import { FollowButton } from "@/components/FollowButton";
+import { TradeTypeBadge } from "@/components/TradeTypeBadge";
 
 export const dynamic = "force-dynamic";
 
@@ -21,13 +24,18 @@ const CLUSTER_WINDOW_DAYS = 60;
 const CLUSTER_MIN_MEMBERS = 2;
 
 export default async function InterestingBuysPage() {
-  const [{ data: politicians }, { data: trades }, { data: returns }, { data: stocks }] =
+  const [{ data: politicians }, { data: trades }, { data: returns }, { data: stocks }, { data: watchlist }] =
     await Promise.all([
       supabase.from("politicians").select("*").returns<Politician[]>(),
       supabase.from("trades").select("*").returns<Trade[]>(),
       supabase.from("trade_returns").select("*").returns<TradeReturn[]>(),
       supabase.from("stocks").select("*").returns<Stock[]>(),
+      supabase.from("watchlist_items").select("*").returns<WatchlistItem[]>(),
     ]);
+
+  const followedPoliticianIds = new Set(
+    (watchlist ?? []).filter((w) => w.kind === "politician").map((w) => w.ref_id)
+  );
 
   const politicianById = new Map((politicians ?? []).map((p) => [p.id, p]));
   const stockByTicker = new Map((stocks ?? []).map((s) => [s.ticker, s]));
@@ -138,12 +146,12 @@ export default async function InterestingBuysPage() {
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <p className="flex items-center gap-2 text-sm font-medium text-stone-900 dark:text-stone-50">
+                    <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-stone-900 dark:text-stone-50">
                       <span className={`h-2 w-2 shrink-0 rounded-full ${style.dot}`} />
                       <Link href={`/politicians/${p.id}`} className="hover:underline">
                         {p.full_name}
                       </Link>
-                      <span className="font-normal text-stone-400">bought</span>
+                      <TradeTypeBadge type={t.trade_type} />
                       <Link href={`/stocks/${t.ticker}`} className="hover:underline">
                         {t.ticker}
                       </Link>
@@ -153,9 +161,17 @@ export default async function InterestingBuysPage() {
                       {" "}&middot; {titleCase(p.party)} &middot; {p.state}
                     </p>
                   </div>
-                  <span className="shrink-0 text-sm font-medium text-stone-700 dark:text-stone-300">
-                    {t.amount_label}
-                  </span>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="text-sm font-medium text-stone-700 dark:text-stone-300">
+                      {t.amount_label}
+                    </span>
+                    <FollowButton
+                      kind="politician"
+                      refId={p.id}
+                      initialFollowing={followedPoliticianIds.has(p.id)}
+                      size="sm"
+                    />
+                  </div>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {flags.map((f) => (

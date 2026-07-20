@@ -12,6 +12,8 @@ import { formatUsd, partyStyle, titleCase } from "@/lib/ui";
 import { PerformanceChart, type ChartPoint } from "@/components/PerformanceChart";
 import { committeesFor, committeeConflicts } from "@/lib/committees";
 import { sectorForTicker } from "@/lib/sectors";
+import { FollowButton } from "@/components/FollowButton";
+import { TradeTypeBadge } from "@/components/TradeTypeBadge";
 
 export const dynamic = "force-dynamic";
 
@@ -22,11 +24,15 @@ export default async function PoliticianPage({
 }) {
   const { id } = await params;
 
-  const { data: politician } = await supabase
-    .from("politicians")
-    .select("*")
-    .eq("id", id)
-    .single<Politician>();
+  const [{ data: politician }, { data: watchlistRow }] = await Promise.all([
+    supabase.from("politicians").select("*").eq("id", id).single<Politician>(),
+    supabase
+      .from("watchlist_items")
+      .select("kind")
+      .eq("kind", "politician")
+      .eq("ref_id", id)
+      .maybeSingle(),
+  ]);
 
   if (!politician) notFound();
 
@@ -93,11 +99,12 @@ export default async function PoliticianPage({
   return (
     <div className="flex flex-1 flex-col bg-background px-6 py-10">
       <div className="mx-auto w-full max-w-3xl">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <span className={`h-3 w-3 shrink-0 rounded-full ${style.dot}`} />
           <h1 className="text-3xl font-semibold tracking-tight text-stone-900 dark:text-stone-50">
             {politician.full_name}
           </h1>
+          <FollowButton kind="politician" refId={politician.id} initialFollowing={!!watchlistRow} />
         </div>
         <p className="mt-1 flex items-center gap-2 text-sm text-stone-500 dark:text-stone-400">
           <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${style.badge}`}>
@@ -201,17 +208,7 @@ export default async function PoliticianPage({
                       )}
                     </td>
                     <td className="px-4 py-2">
-                      <span
-                        className={
-                          t.trade_type === "PURCHASE"
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : t.trade_type === "SALE"
-                              ? "text-red-600 dark:text-red-400"
-                              : "text-stone-500"
-                        }
-                      >
-                        {titleCase(t.trade_type)}
-                      </span>
+                      <TradeTypeBadge type={t.trade_type} />
                     </td>
                     <td className="px-4 py-2 text-stone-600 dark:text-stone-300">
                       {titleCase(t.owner)}
