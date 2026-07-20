@@ -114,6 +114,33 @@ export async function GET(req: NextRequest) {
 
   const existingByTradeId = new Map(existingReturns.map((r) => [r.trade_id, r]));
 
+  // Fast, read-only diagnostic: are recent trades even missing filing_date
+  // in the first place? If so, no amount of compute-roi batching will ever
+  // populate pre_disclosure_move_pct for them -- that's a sync-new-trades
+  // backfill gap, not a compute-roi backlog issue.
+  if (req.nextUrl.searchParams.get("diag") === "1") {
+    const sorted = [...trades].sort((a, b) => b.transaction_date.localeCompare(a.transaction_date));
+    const recent45 = sorted.filter((t) => {
+      const days = (Date.now() - new Date(t.transaction_date).getTime()) / (1000 * 60 * 60 * 24);
+      return days <= 45;
+    });
+    const recentMissingFilingDate = recent45.filter((t) => !t.filing_date).length;
+    return NextResponse.json({
+      totalTrades: trades.length,
+      recentTrades45d: recent45.length,
+      recentMissingFilingDate,
+      sample: sorted.slice(0, 10).map((t) => ({
+        id: t.id,
+        ticker: t.ticker,
+        transaction_date: t.transaction_date,
+        filing_date: t.filing_date,
+        hasReturn: existingByTradeId.has(t.id),
+        preDisclosureMovePct: existingByTradeId.get(t.id)?.pre_disclosure_move_pct ?? null,
+        confidence: existingByTradeId.get(t.id)?.confidence ?? null,
+      })),
+    });
+  }
+
   // Skip trades that already have a solid result and nothing new to add.
   // Retry ones marked UNAVAILABLE (price data may have shown up since) and
   // ones missing pre_disclosure_move_pct despite having a filing_date
