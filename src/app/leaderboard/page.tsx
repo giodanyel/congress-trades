@@ -45,22 +45,22 @@ export default async function LeaderboardPage() {
     .sort((a, b) => (b.stats!.volume ?? 0) - (a.stats!.volume ?? 0));
 
   return (
-    <div className="flex flex-1 flex-col bg-white px-6 py-10 dark:bg-black">
+    <div className="flex flex-1 flex-col bg-background px-6 py-10">
       <div className="mx-auto w-full max-w-3xl">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+          <h1 className="text-2xl font-semibold tracking-tight text-stone-900 dark:text-stone-50">
             Most Active Traders
           </h1>
           <Link
             href="/leaderboard/roi"
-            className="text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+            className="text-xs font-medium text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200"
           >
             Top Performers &rarr;
           </Link>
         </div>
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-stone-500 dark:text-stone-400">
           Ranked by estimated total disclosed trade volume.{" "}
-          <strong className="text-zinc-700 dark:text-zinc-300">
+          <strong className="text-stone-700 dark:text-stone-300">
             This reflects activity, not performance.
           </strong>{" "}
           For gains and losses, see{" "}
@@ -70,9 +70,9 @@ export default async function LeaderboardPage() {
           .
         </p>
 
-        <div className="mt-6 overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
+        <div className="mt-6 overflow-x-auto rounded-2xl border border-stone-200 dark:border-stone-800">
           <table className="w-full text-left text-sm">
-            <thead className="bg-zinc-50 text-xs uppercase text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
+            <thead className="bg-stone-50 text-xs uppercase text-stone-500 dark:bg-stone-950 dark:text-stone-400">
               <tr>
                 <th className="px-4 py-2 font-medium">#</th>
                 <th className="px-4 py-2 font-medium">Politician</th>
@@ -87,28 +87,28 @@ export default async function LeaderboardPage() {
                 return (
                   <tr
                     key={row.politician.id}
-                    className="border-t border-zinc-100 dark:border-zinc-900"
+                    className="border-t border-stone-100 dark:border-stone-900"
                   >
-                    <td className="px-4 py-2 text-zinc-400">{i + 1}</td>
-                    <td className="px-4 py-2 font-medium text-zinc-900 dark:text-zinc-50">
+                    <td className="px-4 py-2 text-stone-400">{i + 1}</td>
+                    <td className="px-4 py-2 font-medium text-stone-900 dark:text-stone-50">
                       <Link
                         href={`/politicians/${row.politician.id}`}
                         className="flex items-center gap-2 hover:underline"
                       >
                         <span className={`h-2 w-2 shrink-0 rounded-full ${style.dot}`} />
                         {row.politician.full_name}
-                        <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">
+                        <span className="text-xs font-normal text-stone-500 dark:text-stone-400">
                           {row.politician.state}
                         </span>
                       </Link>
                     </td>
-                    <td className="px-4 py-2 text-zinc-600 dark:text-zinc-300">
+                    <td className="px-4 py-2 text-stone-600 dark:text-stone-300">
                       {row.stats!.tradeCount}
                     </td>
-                    <td className="px-4 py-2 text-zinc-600 dark:text-zinc-300">
+                    <td className="px-4 py-2 text-stone-600 dark:text-stone-300">
                       {row.stats!.purchases} / {row.stats!.sales}
                     </td>
-                    <td className="px-4 py-2 font-medium text-zinc-900 dark:text-zinc-50">
+                    <td className="px-4 py-2 font-medium text-stone-900 dark:text-stone-50">
                       {formatUsd(row.stats!.volume, true)}
                     </td>
                   </tr>
@@ -118,7 +118,7 @@ export default async function LeaderboardPage() {
           </table>
         </div>
 
-        <p className="mt-4 text-xs text-zinc-400 dark:text-zinc-500">
+        <p className="mt-4 text-xs text-stone-400 dark:text-stone-500">
           * STOCK Act disclosures report a dollar range, not an exact amount.
           Volume is estimated using the midpoint of each disclosed range.
         </p>

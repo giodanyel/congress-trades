@@ -102,12 +102,12 @@ export default async function InterestingBuysPage() {
   rows.sort((a, b) => b.score - a.score || b.trade.transaction_date.localeCompare(a.trade.transaction_date));
 
   return (
-    <div className="flex flex-1 flex-col bg-white px-6 py-10 dark:bg-black">
+    <div className="flex flex-1 flex-col bg-background px-6 py-10">
       <div className="mx-auto w-full max-w-3xl">
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+        <h1 className="text-2xl font-semibold tracking-tight text-stone-900 dark:text-stone-50">
           Interesting Buys
         </h1>
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-stone-500 dark:text-stone-400">
           Purchases from the last {RECENT_DAYS} days worth a second look: unusually
           large disclosed amounts, tickers multiple members bought around the
           same time, buys from politicians currently outperforming on their
@@ -120,7 +120,7 @@ export default async function InterestingBuysPage() {
         </p>
 
         {rows.length === 0 && (
-          <div className="mt-6 rounded-xl border border-zinc-200 p-4 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+          <div className="mt-6 rounded-2xl border border-stone-200 p-4 text-sm text-stone-500 dark:border-stone-800 dark:text-stone-400">
             Nothing stands out from the last {RECENT_DAYS} days yet.
           </div>
         )}
@@ -134,26 +134,26 @@ export default async function InterestingBuysPage() {
             return (
               <li
                 key={t.id}
-                className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
+                className="rounded-2xl border border-stone-200 p-4 dark:border-stone-800"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <p className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                    <p className="flex items-center gap-2 text-sm font-medium text-stone-900 dark:text-stone-50">
                       <span className={`h-2 w-2 shrink-0 rounded-full ${style.dot}`} />
                       <Link href={`/politicians/${p.id}`} className="hover:underline">
                         {p.full_name}
                       </Link>
-                      <span className="font-normal text-zinc-400">bought</span>
+                      <span className="font-normal text-stone-400">bought</span>
                       <Link href={`/stocks/${t.ticker}`} className="hover:underline">
                         {t.ticker}
                       </Link>
                     </p>
-                    <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                    <p className="mt-0.5 text-xs text-stone-500 dark:text-stone-400">
                       {stock?.company_name ?? t.ticker} &middot; {relativeDate(t.transaction_date)}
                       {" "}&middot; {titleCase(p.party)} &middot; {p.state}
                     </p>
                   </div>
-                  <span className="shrink-0 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  <span className="shrink-0 text-sm font-medium text-stone-700 dark:text-stone-300">
                     {t.amount_label}
                   </span>
                 </div>
@@ -168,13 +168,13 @@ export default async function InterestingBuysPage() {
                   ))}
                 </div>
                 {preMove !== null && t.filing_date ? (
-                  <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                  <p className="mt-2 text-xs text-stone-500 dark:text-stone-400">
                     By the {t.filing_date} disclosure, the price had already{" "}
                     {preMove >= 0 ? "risen" : "fallen"} {Math.abs(preMove * 100).toFixed(1)}% from
                     the trade price.
                   </p>
                 ) : (
-                  <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-600">
+                  <p className="mt-2 text-xs text-stone-400 dark:text-stone-600">
                     Disclosure lag / price-move data not available yet for this trade.
                   </p>
                 )}

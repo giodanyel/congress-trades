@@ -64,5 +64,5 @@ export const confidenceStyle: Record<string, string> = {
   HIGH: "text-emerald-600 dark:text-emerald-400",
   MEDIUM: "text-amber-600 dark:text-amber-400",
   LOW: "text-orange-600 dark:text-orange-400",
-  UNAVAILABLE: "text-zinc-400 dark:text-zinc-600",
+  UNAVAILABLE: "text-stone-400 dark:text-stone-600",
 };

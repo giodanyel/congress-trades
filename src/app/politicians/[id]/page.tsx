@@ -91,22 +91,22 @@ export default async function PoliticianPage({
   }
 
   return (
-    <div className="flex flex-1 flex-col bg-white px-6 py-10 dark:bg-black">
+    <div className="flex flex-1 flex-col bg-background px-6 py-10">
       <div className="mx-auto w-full max-w-3xl">
         <div className="flex items-center gap-3">
           <span className={`h-3 w-3 shrink-0 rounded-full ${style.dot}`} />
-          <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+          <h1 className="text-3xl font-semibold tracking-tight text-stone-900 dark:text-stone-50">
             {politician.full_name}
           </h1>
         </div>
-        <p className="mt-1 flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+        <p className="mt-1 flex items-center gap-2 text-sm text-stone-500 dark:text-stone-400">
           <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${style.badge}`}>
             {style.label}
           </span>
           {politician.state} &middot; {titleCase(politician.chamber)}
         </p>
         {politician.bio && (
-          <p className="mt-4 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+          <p className="mt-4 text-sm leading-relaxed text-stone-600 dark:text-stone-300">
             {politician.bio}
           </p>
         )}
@@ -116,7 +116,7 @@ export default async function PoliticianPage({
             {committees.map((c) => (
               <span
                 key={c}
-                className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400"
+                className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-600 dark:bg-stone-900 dark:text-stone-400"
               >
                 {c}
               </span>
@@ -125,40 +125,40 @@ export default async function PoliticianPage({
         )}
 
         <div className="mt-8 grid grid-cols-3 gap-3">
-          <div className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
-            <p className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+          <div className="rounded-2xl border border-stone-200 p-4 dark:border-stone-800">
+            <p className="text-2xl font-semibold text-stone-900 dark:text-stone-50">
               {trades?.length ?? 0}
             </p>
-            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Total trades</p>
+            <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">Total trades</p>
           </div>
-          <div className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
-            <p className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+          <div className="rounded-2xl border border-stone-200 p-4 dark:border-stone-800">
+            <p className="text-2xl font-semibold text-stone-900 dark:text-stone-50">
               {purchaseCount} / {saleCount}
             </p>
-            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Buys / Sells</p>
+            <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">Buys / Sells</p>
           </div>
-          <div className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
-            <p className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+          <div className="rounded-2xl border border-stone-200 p-4 dark:border-stone-800">
+            <p className="text-2xl font-semibold text-stone-900 dark:text-stone-50">
               {formatUsd(totalEstimatedVolume)}
             </p>
-            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+            <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
               Est. total volume*
             </p>
           </div>
         </div>
 
-        <h2 className="mt-10 mb-4 text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+        <h2 className="mt-10 mb-4 text-sm font-medium uppercase tracking-wide text-stone-500 dark:text-stone-400">
           Cumulative estimated P&amp;L vs S&amp;P 500
         </h2>
         <PerformanceChart points={chartPoints} />
 
-        <h2 className="mt-10 mb-4 text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+        <h2 className="mt-10 mb-4 text-sm font-medium uppercase tracking-wide text-stone-500 dark:text-stone-400">
           Trade history
         </h2>
 
-        <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
+        <div className="overflow-x-auto rounded-2xl border border-stone-200 dark:border-stone-800">
           <table className="w-full text-left text-sm">
-            <thead className="bg-zinc-50 text-xs uppercase text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
+            <thead className="bg-stone-50 text-xs uppercase text-stone-500 dark:bg-stone-950 dark:text-stone-400">
               <tr>
                 <th className="px-4 py-2 font-medium">Date</th>
                 <th className="px-4 py-2 font-medium">Ticker</th>
@@ -179,16 +179,16 @@ export default async function PoliticianPage({
                 return (
                   <tr
                     key={t.id}
-                    className="border-t border-zinc-100 dark:border-zinc-900"
+                    className="border-t border-stone-100 dark:border-stone-900"
                   >
-                    <td className="px-4 py-2 text-zinc-600 dark:text-zinc-300">
+                    <td className="px-4 py-2 text-stone-600 dark:text-stone-300">
                       {t.transaction_date}
                     </td>
-                    <td className="px-4 py-2 font-medium text-zinc-900 dark:text-zinc-50">
+                    <td className="px-4 py-2 font-medium text-stone-900 dark:text-stone-50">
                       <Link href={`/stocks/${t.ticker}`} className="hover:underline">
                         {t.ticker}
                       </Link>
-                      <span className="ml-1 text-xs font-normal text-zinc-500 dark:text-zinc-400">
+                      <span className="ml-1 text-xs font-normal text-stone-500 dark:text-stone-400">
                         {stockByTicker.get(t.ticker)?.company_name}
                       </span>
                       {conflicts.length > 0 && (
@@ -207,21 +207,21 @@ export default async function PoliticianPage({
                             ? "text-emerald-600 dark:text-emerald-400"
                             : t.trade_type === "SALE"
                               ? "text-red-600 dark:text-red-400"
-                              : "text-zinc-500"
+                              : "text-stone-500"
                         }
                       >
                         {titleCase(t.trade_type)}
                       </span>
                     </td>
-                    <td className="px-4 py-2 text-zinc-600 dark:text-zinc-300">
+                    <td className="px-4 py-2 text-stone-600 dark:text-stone-300">
                       {titleCase(t.owner)}
                     </td>
-                    <td className="px-4 py-2 text-zinc-600 dark:text-zinc-300">
+                    <td className="px-4 py-2 text-stone-600 dark:text-stone-300">
                       {t.amount_label}
                     </td>
                     <td className="px-4 py-2">
                       {pnl === null ? (
-                        <span className="text-zinc-400 dark:text-zinc-600">
+                        <span className="text-stone-400 dark:text-stone-600">
                           {r?.confidence === "UNAVAILABLE" || !r ? "no price data" : "—"}
                         </span>
                       ) : (
@@ -233,7 +233,7 @@ export default async function PoliticianPage({
                           }
                         >
                           {pnl >= 0 ? "+" : "-"}${Math.abs(pnl).toLocaleString("en-US", { maximumFractionDigits: 0 })}
-                          <span className="ml-1 text-xs text-zinc-400">
+                          <span className="ml-1 text-xs text-stone-400">
                             ({r!.confidence.toLowerCase()})
                           </span>
                         </span>
@@ -241,7 +241,7 @@ export default async function PoliticianPage({
                     </td>
                     <td className="px-4 py-2">
                       {r?.alpha_pct == null ? (
-                        <span className="text-zinc-400 dark:text-zinc-600">—</span>
+                        <span className="text-stone-400 dark:text-stone-600">—</span>
                       ) : (
                         <span
                           className={
@@ -262,7 +262,7 @@ export default async function PoliticianPage({
           </table>
         </div>
 
-        <p className="mt-4 text-xs text-zinc-400 dark:text-zinc-500">
+        <p className="mt-4 text-xs text-stone-400 dark:text-stone-500">
           * STOCK Act disclosures report a dollar range, not an exact amount, so
           both the volume totals and P&amp;L figures are estimates using the
           disclosed range&apos;s midpoint and available price history &mdash; never

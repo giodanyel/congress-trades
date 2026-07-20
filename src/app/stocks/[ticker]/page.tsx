@@ -53,22 +53,22 @@ export default async function StockPage({
   const returnByTradeId = new Map((returns ?? []).map((r) => [r.trade_id, r]));
 
   return (
-    <div className="flex flex-1 flex-col bg-white px-6 py-10 dark:bg-black">
+    <div className="flex flex-1 flex-col bg-background px-6 py-10">
       <div className="mx-auto w-full max-w-3xl">
-        <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+        <h1 className="text-3xl font-semibold tracking-tight text-stone-900 dark:text-stone-50">
           {stock.ticker}
         </h1>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+        <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
           {stock.company_name}
         </p>
 
-        <h2 className="mt-10 mb-4 text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+        <h2 className="mt-10 mb-4 text-sm font-medium uppercase tracking-wide text-stone-500 dark:text-stone-400">
           Congressional trades ({trades?.length ?? 0})
         </h2>
 
-        <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
+        <div className="overflow-x-auto rounded-2xl border border-stone-200 dark:border-stone-800">
           <table className="w-full text-left text-sm">
-            <thead className="bg-zinc-50 text-xs uppercase text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
+            <thead className="bg-stone-50 text-xs uppercase text-stone-500 dark:bg-stone-950 dark:text-stone-400">
               <tr>
                 <th className="px-4 py-2 font-medium">Date</th>
                 <th className="px-4 py-2 font-medium">Politician</th>
@@ -85,11 +85,11 @@ export default async function StockPage({
                 const pnl =
                   r && r.return_pct !== null && value !== null ? r.return_pct * value : null;
                 return (
-                  <tr key={t.id} className="border-t border-zinc-100 dark:border-zinc-900">
-                    <td className="px-4 py-2 text-zinc-600 dark:text-zinc-300">
+                  <tr key={t.id} className="border-t border-stone-100 dark:border-stone-900">
+                    <td className="px-4 py-2 text-stone-600 dark:text-stone-300">
                       {t.transaction_date}
                     </td>
-                    <td className="px-4 py-2 font-medium text-zinc-900 dark:text-zinc-50">
+                    <td className="px-4 py-2 font-medium text-stone-900 dark:text-stone-50">
                       {p ? (
                         <Link
                           href={`/politicians/${p.id}`}
@@ -109,18 +109,18 @@ export default async function StockPage({
                             ? "text-emerald-600 dark:text-emerald-400"
                             : t.trade_type === "SALE"
                               ? "text-red-600 dark:text-red-400"
-                              : "text-zinc-500"
+                              : "text-stone-500"
                         }
                       >
                         {titleCase(t.trade_type)}
                       </span>
                     </td>
-                    <td className="px-4 py-2 text-zinc-600 dark:text-zinc-300">
+                    <td className="px-4 py-2 text-stone-600 dark:text-stone-300">
                       {t.amount_label}
                     </td>
                     <td className="px-4 py-2">
                       {pnl === null ? (
-                        <span className="text-zinc-400 dark:text-zinc-600">
+                        <span className="text-stone-400 dark:text-stone-600">
                           {!r || r.confidence === "UNAVAILABLE" ? "no price data" : "—"}
                         </span>
                       ) : (
@@ -142,7 +142,7 @@ export default async function StockPage({
           </table>
         </div>
 
-        <p className="mt-4 text-xs text-zinc-400 dark:text-zinc-500">
+        <p className="mt-4 text-xs text-stone-400 dark:text-stone-500">
           * Estimated using the disclosed amount range&apos;s midpoint and
           available price history &mdash; not exact.
         </p>

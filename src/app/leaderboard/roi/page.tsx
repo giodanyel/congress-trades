@@ -35,46 +35,46 @@ export default async function RoiLeaderboardPage() {
   const noPriceDataYet = (returns ?? []).length === 0;
 
   return (
-    <div className="flex flex-1 flex-col bg-white px-6 py-10 dark:bg-black">
+    <div className="flex flex-1 flex-col bg-background px-6 py-10">
       <div className="mx-auto w-full max-w-3xl">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+          <h1 className="text-2xl font-semibold tracking-tight text-stone-900 dark:text-stone-50">
             Top Performers
           </h1>
           <Link
             href="/leaderboard"
-            className="text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+            className="text-xs font-medium text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200"
           >
             Most Active &rarr;
           </Link>
         </div>
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-stone-500 dark:text-stone-400">
           Every politician with at least one priced trade, ranked by estimated
           ROI &mdash; including members who haven&apos;t traded recently.{" "}
           <Link href="/" className="underline">
             See the homepage
           </Link>{" "}
           for top performers who are currently active.{" "}
-          <strong className="text-zinc-700 dark:text-zinc-300">
+          <strong className="text-stone-700 dark:text-stone-300">
             These are estimates, not exact figures.
           </strong>
         </p>
 
         {noPriceDataYet && (
-          <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
+          <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
             No price data has been synced yet, so ROI can&apos;t be estimated.
           </div>
         )}
 
         {!noPriceDataYet && rows.length === 0 && (
-          <div className="mt-6 rounded-xl border border-zinc-200 p-4 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+          <div className="mt-6 rounded-2xl border border-stone-200 p-4 text-sm text-stone-500 dark:border-stone-800 dark:text-stone-400">
             No politicians have enough priced trades yet.
           </div>
         )}
 
-        <div className="mt-6 overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
+        <div className="mt-6 overflow-x-auto rounded-2xl border border-stone-200 dark:border-stone-800">
           <table className="w-full text-left text-sm">
-            <thead className="bg-zinc-50 text-xs uppercase text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
+            <thead className="bg-stone-50 text-xs uppercase text-stone-500 dark:bg-stone-950 dark:text-stone-400">
               <tr>
                 <th className="px-4 py-2 font-medium">#</th>
                 <th className="px-4 py-2 font-medium">Politician</th>
@@ -91,17 +91,17 @@ export default async function RoiLeaderboardPage() {
                 return (
                   <tr
                     key={row.politician.id}
-                    className="border-t border-zinc-100 dark:border-zinc-900"
+                    className="border-t border-stone-100 dark:border-stone-900"
                   >
-                    <td className="px-4 py-2 text-zinc-400">{i + 1}</td>
-                    <td className="px-4 py-2 font-medium text-zinc-900 dark:text-zinc-50">
+                    <td className="px-4 py-2 text-stone-400">{i + 1}</td>
+                    <td className="px-4 py-2 font-medium text-stone-900 dark:text-stone-50">
                       <Link
                         href={`/politicians/${row.politician.id}`}
                         className="flex items-center gap-2 hover:underline"
                       >
                         <span className={`h-2 w-2 shrink-0 rounded-full ${style.dot}`} />
                         {row.politician.full_name}
-                        <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">
+                        <span className="text-xs font-normal text-stone-500 dark:text-stone-400">
                           {row.politician.state}
                         </span>
                       </Link>
@@ -117,7 +117,7 @@ export default async function RoiLeaderboardPage() {
                     </td>
                     <td className="px-4 py-2">
                       {row.alpha === null ? (
-                        <span className="text-zinc-400 dark:text-zinc-600">—</span>
+                        <span className="text-stone-400 dark:text-stone-600">—</span>
                       ) : (
                         <span
                           className={
@@ -131,13 +131,13 @@ export default async function RoiLeaderboardPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-2 text-zinc-600 dark:text-zinc-300">
+                    <td className="px-4 py-2 text-stone-600 dark:text-stone-300">
                       {row.agg!.estimatedGainLoss >= 0 ? "+" : "-"}$
                       {Math.abs(row.agg!.estimatedGainLoss).toLocaleString("en-US", {
                         maximumFractionDigits: 0,
                       })}
                     </td>
-                    <td className="px-4 py-2 text-zinc-500 dark:text-zinc-400">
+                    <td className="px-4 py-2 text-stone-500 dark:text-stone-400">
                       {row.agg!.pricedTrades}/{row.agg!.totalTrades} priced (
                       {(row.coverage * 100).toFixed(0)}%)
                     </td>
@@ -148,7 +148,7 @@ export default async function RoiLeaderboardPage() {
           </table>
         </div>
 
-        <p className="mt-4 text-xs text-zinc-400 dark:text-zinc-500">
+        <p className="mt-4 text-xs text-stone-400 dark:text-stone-500">
           Confidence key:{" "}
           <span className={confidenceStyle.HIGH}>High</span> = price matched
           within 3 days of the trade and current price is fresh.{" "}

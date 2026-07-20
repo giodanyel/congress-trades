@@ -19,7 +19,7 @@ const PAD_BOTTOM = 24;
 export function PerformanceChart({ points }: { points: ChartPoint[] }) {
   if (points.length < 2) {
     return (
-      <div className="flex h-[200px] items-center justify-center rounded-xl border border-zinc-200 text-sm text-zinc-400 dark:border-zinc-800 dark:text-zinc-600">
+      <div className="flex h-[200px] items-center justify-center rounded-2xl border border-stone-200 text-sm text-stone-400 dark:border-stone-800 dark:text-stone-600">
         Need at least 2 priced trades to chart a trend.
       </div>
     );
@@ -58,9 +58,9 @@ export function PerformanceChart({ points }: { points: ChartPoint[] }) {
     <div>
       <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="w-full" role="img" aria-label="Cumulative estimated P&L over time">
         {/* zero line */}
-        <line x1={PAD_LEFT} y1={zeroY} x2={WIDTH - PAD_RIGHT} y2={zeroY} className="stroke-zinc-200 dark:stroke-zinc-800" strokeWidth={1} />
+        <line x1={PAD_LEFT} y1={zeroY} x2={WIDTH - PAD_RIGHT} y2={zeroY} className="stroke-stone-200 dark:stroke-stone-800" strokeWidth={1} />
         {spyPath && (
-          <path d={spyPath} fill="none" className="stroke-zinc-400 dark:stroke-zinc-600" strokeWidth={1.5} strokeDasharray="4 3" />
+          <path d={spyPath} fill="none" className="stroke-stone-400 dark:stroke-stone-600" strokeWidth={1.5} strokeDasharray="4 3" />
         )}
         <path
           d={pnlPath}
@@ -69,15 +69,15 @@ export function PerformanceChart({ points }: { points: ChartPoint[] }) {
           strokeWidth={2}
         />
       </svg>
-      <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
+      <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-stone-500 dark:text-stone-400">
         <span className="flex items-center gap-1.5">
           <span className={`h-0.5 w-4 rounded ${lastPnl >= 0 ? "bg-emerald-500" : "bg-red-500"}`} />
-          Actual trades: <span className="font-medium text-zinc-700 dark:text-zinc-300">{fmt(lastPnl)}</span>
+          Actual trades: <span className="font-medium text-stone-700 dark:text-stone-300">{fmt(lastPnl)}</span>
         </span>
         {lastSpy !== null && (
           <span className="flex items-center gap-1.5">
-            <span className="h-0.5 w-4 rounded border-t-2 border-dashed border-zinc-400 dark:border-zinc-600" />
-            If S&amp;P 500 instead: <span className="font-medium text-zinc-700 dark:text-zinc-300">{fmt(lastSpy)}</span>
+            <span className="h-0.5 w-4 rounded border-t-2 border-dashed border-stone-400 dark:border-stone-600" />
+            If S&amp;P 500 instead: <span className="font-medium text-stone-700 dark:text-stone-300">{fmt(lastSpy)}</span>
           </span>
         )}
       </div>

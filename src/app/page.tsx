@@ -64,12 +64,12 @@ export default async function Home() {
   const hasAnyPriceData = (returns ?? []).length > 0;
 
   return (
-    <div className="flex flex-1 flex-col bg-white px-6 py-10 dark:bg-black">
+    <div className="flex flex-1 flex-col bg-background px-6 py-10">
       <div className="mx-auto w-full max-w-4xl">
-        <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+        <h1 className="text-3xl font-semibold tracking-tight text-stone-900 dark:text-stone-50">
           Congress Trades
         </h1>
-        <p className="mt-2 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
+        <p className="mt-2 text-sm leading-relaxed text-stone-500 dark:text-stone-400">
           Current stock activity disclosed by sitting members of Congress under
           the STOCK Act. Dollar figures are always estimates from disclosed
           ranges, never exact amounts.
@@ -77,29 +77,29 @@ export default async function Home() {
 
         {/* Top performers, currently active */}
         <div className="mt-10 flex items-center justify-between">
-          <h2 className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          <h2 className="text-sm font-medium uppercase tracking-wide text-stone-500 dark:text-stone-400">
             Top Performers, Currently Active
           </h2>
           <Link
             href="/leaderboard/roi"
-            className="text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+            className="text-xs font-medium text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200"
           >
             Full ROI leaderboard &rarr;
           </Link>
         </div>
-        <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-600">
+        <p className="mt-1 text-xs text-stone-400 dark:text-stone-600">
           Ranked by estimated ROI, limited to politicians who traded in the
           last {ACTIVE_WINDOW_DAYS} days.
         </p>
 
         {!hasAnyPriceData && (
-          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
+          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
             Price data is still syncing, so ROI rankings aren&apos;t available yet.
           </div>
         )}
 
         {hasAnyPriceData && topPerformers.length === 0 && (
-          <div className="mt-4 rounded-xl border border-zinc-200 p-4 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+          <div className="mt-4 rounded-2xl border border-stone-200 p-4 text-sm text-stone-500 dark:border-stone-800 dark:text-stone-400">
             No currently-active politicians have priced trades yet.
           </div>
         )}
@@ -112,7 +112,7 @@ export default async function Home() {
               <Link
                 key={row.politician.id}
                 href={`/politicians/${row.politician.id}`}
-                className={`rounded-xl border p-4 transition-colors ${
+                className={`rounded-2xl border p-4 transition-colors ${
                   positive
                     ? "border-emerald-200 bg-emerald-50/50 hover:border-emerald-300 dark:border-emerald-900 dark:bg-emerald-950/20"
                     : "border-red-200 bg-red-50/50 hover:border-red-300 dark:border-red-900 dark:bg-red-950/20"
@@ -120,9 +120,9 @@ export default async function Home() {
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-zinc-400">#{i + 1}</span>
+                    <span className="text-xs font-semibold text-stone-400">#{i + 1}</span>
                     <span className={`h-2.5 w-2.5 rounded-full ${style.dot}`} />
-                    <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                    <p className="text-sm font-medium text-stone-900 dark:text-stone-50">
                       {row.politician.full_name}
                     </p>
                   </div>
@@ -136,7 +136,7 @@ export default async function Home() {
                     {formatPct(row.roi)}
                   </span>
                 </div>
-                <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                <p className="mt-2 text-xs text-stone-500 dark:text-stone-400">
                   {style.label} &middot; {row.politician.state} &middot; last trade{" "}
                   {relativeDate(row.agg.lastTradeDate)}
                   {row.alpha !== null && (
@@ -157,24 +157,24 @@ export default async function Home() {
 
         {/* Latest buys */}
         <div className="mt-12 flex items-center justify-between">
-          <h2 className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          <h2 className="text-sm font-medium uppercase tracking-wide text-stone-500 dark:text-stone-400">
             Latest Buys
           </h2>
           <Link
             href="/leaderboard"
-            className="text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+            className="text-xs font-medium text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200"
           >
             Most active traders &rarr;
           </Link>
         </div>
 
         {recentBuys.length === 0 && (
-          <div className="mt-4 rounded-xl border border-zinc-200 p-4 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+          <div className="mt-4 rounded-2xl border border-stone-200 p-4 text-sm text-stone-500 dark:border-stone-800 dark:text-stone-400">
             No purchase trades on record yet.
           </div>
         )}
 
-        <ul className="mt-4 divide-y divide-zinc-100 rounded-xl border border-zinc-200 dark:divide-zinc-900 dark:border-zinc-800">
+        <ul className="mt-4 divide-y divide-stone-100 rounded-2xl border border-stone-200 dark:divide-stone-900 dark:border-stone-800">
           {recentBuys.map((t) => {
             const p = politicianById.get(t.politician_id);
             const stock = stockByTicker.get(t.ticker);
@@ -185,7 +185,7 @@ export default async function Home() {
                 <div className="flex min-w-0 items-center gap-3">
                   {style && <span className={`h-2 w-2 shrink-0 rounded-full ${style.dot}`} />}
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                    <p className="truncate text-sm font-medium text-stone-900 dark:text-stone-50">
                       {p ? (
                         <Link href={`/politicians/${p.id}`} className="hover:underline">
                           {p.full_name}
@@ -193,7 +193,7 @@ export default async function Home() {
                       ) : (
                         "Unknown"
                       )}{" "}
-                      <span className="font-normal text-zinc-400">bought</span>{" "}
+                      <span className="font-normal text-stone-400">bought</span>{" "}
                       <Link href={`/stocks/${t.ticker}`} className="hover:underline">
                         {t.ticker}
                       </Link>
@@ -206,13 +206,13 @@ export default async function Home() {
                         </span>
                       )}
                     </p>
-                    <p className="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400">
+                    <p className="mt-0.5 truncate text-xs text-stone-500 dark:text-stone-400">
                       {stock?.company_name ?? t.ticker} &middot; {relativeDate(t.transaction_date)}
                       {p ? ` · ${titleCase(p.party)}` : ""}
                     </p>
                   </div>
                 </div>
-                <span className="shrink-0 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                <span className="shrink-0 text-sm font-medium text-stone-700 dark:text-stone-300">
                   {t.amount_label ?? formatUsd(estimatedTradeValue(t))}
                 </span>
               </li>

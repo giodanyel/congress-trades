@@ -55,16 +55,16 @@ export default async function PoliticiansDirectoryPage({
   }
 
   return (
-    <div className="flex flex-1 flex-col bg-white px-6 py-12 dark:bg-black">
+    <div className="flex flex-1 flex-col bg-background px-6 py-12">
       <div className="mx-auto w-full max-w-4xl">
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+        <h1 className="text-2xl font-semibold tracking-tight text-stone-900 dark:text-stone-50">
           All Politicians
         </h1>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+        <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
           {query ? (
             <>
               {politicians.length} result{politicians.length === 1 ? "" : "s"} for
-              &nbsp;<span className="font-medium text-zinc-700 dark:text-zinc-300">&quot;{query}&quot;</span>
+              &nbsp;<span className="font-medium text-stone-700 dark:text-stone-300">&quot;{query}&quot;</span>
             </>
           ) : (
             `${politicians.length} current members of Congress`
@@ -72,13 +72,13 @@ export default async function PoliticiansDirectoryPage({
         </p>
 
         {error && (
-          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400">
+          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400">
             Couldn&apos;t load data from Supabase: {error}
           </div>
         )}
 
         {!error && politicians.length === 0 && (
-          <div className="mt-6 rounded-xl border border-zinc-200 p-4 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+          <div className="mt-6 rounded-2xl border border-stone-200 p-4 text-sm text-stone-500 dark:border-stone-800 dark:text-stone-400">
             No politicians match that search.
           </div>
         )}
@@ -89,15 +89,15 @@ export default async function PoliticiansDirectoryPage({
             return (
               <li
                 key={p.id}
-                className="rounded-xl border border-zinc-200 p-4 transition-colors hover:border-zinc-300 dark:border-zinc-800 dark:hover:border-zinc-700"
+                className="rounded-2xl border border-stone-200 p-4 transition-colors hover:border-stone-300 dark:border-stone-800 dark:hover:border-stone-700"
               >
                 <Link href={`/politicians/${p.id}`} className="flex items-center gap-3">
                   <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${style.dot}`} />
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                    <p className="truncate text-sm font-medium text-stone-900 dark:text-stone-50">
                       {p.full_name}
                     </p>
-                    <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                    <p className="mt-0.5 text-xs text-stone-500 dark:text-stone-400">
                       {style.label} &middot; {p.state} &middot; {titleCase(p.chamber)}
                     </p>
                   </div>
