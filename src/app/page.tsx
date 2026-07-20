@@ -1,30 +1,31 @@
 import Link from "next/link";
 import {
   supabase,
-  fetchAllRows,
+  getCachedTrades,
+  getCachedTradeReturns,
+  getCachedPoliticians,
   estimatedTradeValue,
-  type Politician,
-  type Trade,
-  type TradeReturn,
 } from "@/lib/supabase";
 import { partyStyle, formatUsd, formatPct, relativeDate } from "@/lib/ui";
 import { aggregateByPolitician, roiOf, alphaOf, ACTIVE_WINDOW_DAYS } from "@/lib/analytics";
 import { FollowButton } from "@/components/FollowButton";
 import type { WatchlistItem } from "@/lib/supabase";
 
-// Data changes as new trades/politicians are added, so always fetch fresh
-// instead of baking a snapshot in at build time.
+// The page itself still renders per-request (follow-button state, etc),
+// but the expensive full-table reads it depends on are wrapped in
+// unstable_cache below (see @/lib/supabase) so they're not re-run against
+// Supabase on every single visit -- only every 30 min.
 export const dynamic = "force-dynamic";
 
-const RECENT_BUYS_LIMIT = 12;
-const TOP_PERFORMERS_LIMIT = 8;
+const RECENT_BUYS_LIMIT = 8;
+const TOP_PERFORMERS_LIMIT = 6;
 
 export default async function Home() {
-  const [{ data: politicians }, trades, returns, { data: watchlist }] =
+  const [politicians, trades, returns, { data: watchlist }] =
     await Promise.all([
-      supabase.from("politicians").select("*").returns<Politician[]>(),
-      fetchAllRows<Trade>("trades", "*"),
-      fetchAllRows<TradeReturn>("trade_returns", "*"),
+      getCachedPoliticians(),
+      getCachedTrades(),
+      getCachedTradeReturns(),
       supabase.from("watchlist_items").select("*").returns<WatchlistItem[]>(),
     ]);
 
@@ -82,25 +83,25 @@ export default async function Home() {
             than making a first-time visitor read tables to understand
             scope. */}
         <div className="mt-6 grid grid-cols-3 gap-3">
-          <div className="card-pop animate-in px-4 py-3" style={{ backgroundColor: "var(--cat-politicians-soft)" }}>
-            <p className="font-heading text-xl font-semibold" style={{ color: "var(--cat-politicians)" }}>{(politicians ?? []).length}</p>
-            <p className="text-xs text-stone-600 dark:text-stone-300">Politicians tracked</p>
+          <div className="card-pop px-4 py-3">
+            <p className="font-heading text-xl font-semibold text-brand">{(politicians ?? []).length}</p>
+            <p className="text-xs text-stone-500 dark:text-stone-400">Politicians tracked</p>
           </div>
-          <div className="card-pop animate-in px-4 py-3" style={{ backgroundColor: "var(--cat-stocks-soft)", animationDelay: "60ms" }}>
-            <p className="font-heading text-xl font-semibold" style={{ color: "var(--cat-stocks)" }}>
+          <div className="card-pop px-4 py-3">
+            <p className="font-heading text-xl font-semibold text-brand">
               {(trades ?? []).length.toLocaleString("en-US")}
             </p>
-            <p className="text-xs text-stone-600 dark:text-stone-300">Trades disclosed</p>
+            <p className="text-xs text-stone-500 dark:text-stone-400">Trades disclosed</p>
           </div>
-          <div className="card-pop animate-in px-4 py-3" style={{ backgroundColor: "var(--cat-following-soft)", animationDelay: "120ms" }}>
-            <p className="font-heading text-xl font-semibold" style={{ color: "var(--cat-following)" }}>Daily</p>
-            <p className="text-xs text-stone-600 dark:text-stone-300">Data refresh</p>
+          <div className="card-pop px-4 py-3">
+            <p className="font-heading text-xl font-semibold text-brand">Daily</p>
+            <p className="text-xs text-stone-500 dark:text-stone-400">Data refresh</p>
           </div>
         </div>
 
         {/* Top performers, currently active */}
         <div className="mt-10 flex items-center justify-between">
-          <h2 className="font-heading text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--cat-performance)" }}>
+          <h2 className="font-heading text-sm font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400">
             Top Performers, Currently Active
           </h2>
           <Link
@@ -127,21 +128,32 @@ export default async function Home() {
           </div>
         )}
 
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <ul className="mt-4 divide-y divide-stone-100 card-pop accent-rail accent-performance dark:divide-stone-900">
           {topPerformers.map((row, i) => {
             const style = partyStyle(row.politician.party);
             const positive = row.roi >= 0;
             return (
-              <div
-                key={row.politician.id}
-                className={`card-pop animate-in relative p-4 ${
-                  positive
-                    ? "bg-emerald-50/50 dark:bg-emerald-950/20"
-                    : "bg-red-50/50 dark:bg-red-950/20"
-                }`}
-                style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
-              >
-                <div className="absolute right-3 top-3">
+              <li key={row.politician.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                <Link href={`/politicians/${row.politician.id}`} className="flex min-w-0 flex-1 items-center gap-3">
+                  <span className="w-4 shrink-0 text-xs font-semibold text-stone-400">{i + 1}</span>
+                  <span className={`h-2 w-2 shrink-0 rounded-full ${style.dot}`} />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-stone-900 hover:underline dark:text-stone-50">
+                      {row.politician.full_name}
+                    </p>
+                    <p className="text-xs text-stone-400 dark:text-stone-600">
+                      {row.politician.state} &middot; {relativeDate(row.agg.lastTradeDate)}
+                    </p>
+                  </div>
+                </Link>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span
+                    className={`text-sm font-semibold ${
+                      positive ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+                    }`}
+                  >
+                    {formatPct(row.roi)}
+                  </span>
                   <FollowButton
                     kind="politician"
                     refId={row.politician.id}
@@ -149,37 +161,14 @@ export default async function Home() {
                     size="sm"
                   />
                 </div>
-                <Link href={`/politicians/${row.politician.id}`} className="block pr-20">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-stone-400">#{i + 1}</span>
-                      <span className={`h-2.5 w-2.5 rounded-full ${style.dot}`} />
-                      <p className="text-sm font-medium text-stone-900 dark:text-stone-50">
-                        {row.politician.full_name}
-                      </p>
-                    </div>
-                    <span
-                      className={`text-sm font-semibold ${
-                        positive
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : "text-red-600 dark:text-red-400"
-                      }`}
-                    >
-                      {formatPct(row.roi)}
-                    </span>
-                  </div>
-                  <p className="mt-1.5 text-xs text-stone-400 dark:text-stone-600">
-                    {row.politician.state} &middot; {relativeDate(row.agg.lastTradeDate)}
-                  </p>
-                </Link>
-              </div>
+              </li>
             );
           })}
-        </div>
+        </ul>
 
         {/* Latest buys */}
         <div className="mt-12 flex items-center justify-between">
-          <h2 className="font-heading text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--cat-stocks)" }}>
+          <h2 className="font-heading text-sm font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400">
             Latest Buys
           </h2>
           <Link

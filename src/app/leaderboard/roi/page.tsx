@@ -1,23 +1,18 @@
 import Link from "next/link";
-import {
-  supabase,
-  fetchAllRows,
-  type Politician,
-  type Trade,
-  type TradeReturn,
-} from "@/lib/supabase";
+import { getCachedPoliticians, getCachedTrades, getCachedTradeReturns } from "@/lib/supabase";
 import { formatPct, partyStyle, confidenceStyle } from "@/lib/ui";
 import { aggregateByPolitician, roiOf, alphaOf } from "@/lib/analytics";
 
+// Page renders per-request; the heavy trades/returns reads underneath are
+// cached via unstable_cache (see @/lib/supabase), not this.
 export const dynamic = "force-dynamic";
 
 export default async function RoiLeaderboardPage() {
-  const [{ data: politicians }, trades, returns] =
-    await Promise.all([
-      supabase.from("politicians").select("*").returns<Politician[]>(),
-      fetchAllRows<Trade>("trades", "*"),
-      fetchAllRows<TradeReturn>("trade_returns", "*"),
-    ]);
+  const [politicians, trades, returns] = await Promise.all([
+    getCachedPoliticians(),
+    getCachedTrades(),
+    getCachedTradeReturns(),
+  ]);
 
   const returnByTradeId = new Map(returns.map((r) => [r.trade_id, r]));
   const byPolitician = aggregateByPolitician(trades, returnByTradeId);

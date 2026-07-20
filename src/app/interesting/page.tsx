@@ -1,19 +1,22 @@
 import Link from "next/link";
 import {
   supabase,
-  fetchAllRows,
+  getCachedTrades,
+  getCachedTradeReturns,
+  getCachedPoliticians,
   type Politician,
   type Trade,
-  type TradeReturn,
   type WatchlistItem,
 } from "@/lib/supabase";
-import { partyStyle, relativeDate } from "@/lib/ui";
+import { partyStyle } from "@/lib/ui";
 import { aggregateByPolitician, roiOf, isActive, sizeTier } from "@/lib/analytics";
 import { committeeConflicts } from "@/lib/committees";
 import { sectorForTicker } from "@/lib/sectors";
 import { FollowButton } from "@/components/FollowButton";
 import { TradeTypeBadge } from "@/components/TradeTypeBadge";
 
+// Page renders per-request; the heavy trades/returns reads underneath are
+// cached via unstable_cache (see @/lib/supabase), not this.
 export const dynamic = "force-dynamic";
 
 // A buy counts as "interesting" if it's recent and has at least one flag:
@@ -24,11 +27,11 @@ const CLUSTER_WINDOW_DAYS = 60;
 const CLUSTER_MIN_MEMBERS = 2;
 
 export default async function InterestingBuysPage() {
-  const [{ data: politicians }, trades, returns, { data: watchlist }] =
+  const [politicians, trades, returns, { data: watchlist }] =
     await Promise.all([
-      supabase.from("politicians").select("*").returns<Politician[]>(),
-      fetchAllRows<Trade>("trades", "*"),
-      fetchAllRows<TradeReturn>("trade_returns", "*"),
+      getCachedPoliticians(),
+      getCachedTrades(),
+      getCachedTradeReturns(),
       supabase.from("watchlist_items").select("*").returns<WatchlistItem[]>(),
     ]);
 
@@ -132,17 +135,14 @@ export default async function InterestingBuysPage() {
           </div>
         )}
 
-        <ul className="mt-6 flex flex-col gap-3">
-          {rows.map(({ trade: t, politician: p, flags }, i) => {
+        <ul className="mt-6 divide-y divide-stone-100 card-pop accent-rail accent-performance dark:divide-stone-900">
+          {rows.map(({ trade: t, politician: p, flags }) => {
             const style = partyStyle(p.party);
             const r = returnByTradeId.get(t.id);
             const preMove = r?.pre_disclosure_move_pct ?? null;
+            const restFlags = flags.slice(1).map((f) => f.label).join("; ");
             return (
-              <li
-                key={t.id}
-                className="card-pop animate-in accent-rail accent-performance p-4"
-                style={{ animationDelay: `${Math.min(i, 8) * 30}ms` }}
-              >
+              <li key={t.id} className="px-4 py-3">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-stone-900 dark:text-stone-50">
@@ -155,48 +155,35 @@ export default async function InterestingBuysPage() {
                         {t.ticker}
                       </Link>
                     </p>
-                    <p className="mt-0.5 text-xs text-stone-400 dark:text-stone-600">
-                      {p.state} &middot; {relativeDate(t.transaction_date)}
+                    <p className="mt-0.5 truncate text-xs text-stone-400 dark:text-stone-600">
+                      {flags[0]?.label}
+                      {flags.length > 1 && (
+                        <span title={restFlags} className="ml-1 text-stone-300 dark:text-stone-700">
+                          +{flags.length - 1} more
+                        </span>
+                      )}
                     </p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex shrink-0 flex-col items-end gap-0.5">
                     <span className="text-sm font-medium text-stone-700 dark:text-stone-300">
                       {t.amount_label}
                     </span>
-                    <FollowButton
-                      kind="politician"
-                      refId={p.id}
-                      initialFollowing={followedPoliticianIds.has(p.id)}
-                      size="sm"
-                    />
+                    {preMove !== null && t.filing_date && (
+                      <span
+                        title={`By the ${t.filing_date} disclosure, the price had already ${preMove >= 0 ? "risen" : "fallen"} ${Math.abs(preMove * 100).toFixed(1)}% from the trade price.`}
+                        className={`text-[11px] font-medium ${preMove >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
+                      >
+                        {preMove >= 0 ? "+" : ""}
+                        {(preMove * 100).toFixed(1)}% pre-disclosure
+                      </span>
+                    )}
                   </div>
-                </div>
-                <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                  {flags.slice(0, 2).map((f) => (
-                    <span
-                      key={f.label}
-                      className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300"
-                    >
-                      {f.label}
-                    </span>
-                  ))}
-                  {flags.length > 2 && (
-                    <span
-                      title={flags.slice(2).map((f) => f.label).join("; ")}
-                      className="text-xs font-medium text-stone-400 dark:text-stone-600"
-                    >
-                      +{flags.length - 2} more
-                    </span>
-                  )}
-                  {preMove !== null && t.filing_date && (
-                    <span
-                      title={`By the ${t.filing_date} disclosure, the price had already ${preMove >= 0 ? "risen" : "fallen"} ${Math.abs(preMove * 100).toFixed(1)}% from the trade price.`}
-                      className={`ml-auto text-xs font-medium ${preMove >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
-                    >
-                      {preMove >= 0 ? "+" : ""}
-                      {(preMove * 100).toFixed(1)}% pre-disclosure
-                    </span>
-                  )}
+                  <FollowButton
+                    kind="politician"
+                    refId={p.id}
+                    initialFollowing={followedPoliticianIds.has(p.id)}
+                    size="sm"
+                  />
                 </div>
               </li>
             );

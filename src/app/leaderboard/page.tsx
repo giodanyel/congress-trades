@@ -1,22 +1,13 @@
 import Link from "next/link";
-import {
-  supabase,
-  fetchAllRows,
-  estimatedTradeValue,
-  type Politician,
-  type Trade,
-} from "@/lib/supabase";
+import { getCachedPoliticians, getCachedTrades, estimatedTradeValue } from "@/lib/supabase";
 import { formatUsd, partyStyle } from "@/lib/ui";
 
+// Page renders per-request; the heavy trades read underneath is cached
+// via unstable_cache (see @/lib/supabase), not this.
 export const dynamic = "force-dynamic";
 
 export default async function LeaderboardPage() {
-  const { data: politicians } = await supabase
-    .from("politicians")
-    .select("*")
-    .returns<Politician[]>();
-
-  const trades = await fetchAllRows<Trade>("trades", "*");
+  const [politicians, trades] = await Promise.all([getCachedPoliticians(), getCachedTrades()]);
 
   const byPolitician = new Map<
     string,

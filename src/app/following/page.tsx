@@ -108,7 +108,7 @@ export default async function FollowingPage() {
 
         {followedPoliticianIds.length > 0 && (
           <>
-            <h2 className="mt-8 mb-3 font-heading text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--cat-following)" }}>
+            <h2 className="mt-8 mb-3 font-heading text-sm font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400">
               Politicians you follow
             </h2>
             <div className="flex flex-wrap gap-2">
@@ -135,7 +135,7 @@ export default async function FollowingPage() {
 
         {followedTickers.length > 0 && (
           <>
-            <h2 className="mt-6 mb-3 font-heading text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--cat-stocks)" }}>
+            <h2 className="mt-6 mb-3 font-heading text-sm font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400">
               Tickers you follow
             </h2>
             <div className="flex flex-wrap gap-2">
@@ -158,7 +158,7 @@ export default async function FollowingPage() {
           </>
         )}
 
-        <h2 className="mt-8 mb-4 font-heading text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--cat-following)" }}>
+        <h2 className="mt-8 mb-4 font-heading text-sm font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400">
           Recent activity
         </h2>
 
@@ -168,8 +168,8 @@ export default async function FollowingPage() {
           </div>
         )}
 
-        <ul className="flex flex-col gap-3">
-          {trades.slice(0, TRADE_LIMIT_PER_ITEM * Math.max(1, followedPoliticianIds.length + followedTickers.length)).map((t, i) => {
+        <ul className="divide-y divide-stone-100 card-pop accent-rail accent-following dark:divide-stone-900">
+          {trades.slice(0, TRADE_LIMIT_PER_ITEM * Math.max(1, followedPoliticianIds.length + followedTickers.length)).map((t) => {
             const p = politicianById.get(t.politician_id);
             const r = returnByTradeId.get(t.id);
             const conflicts = p ? committeeConflicts(p.id, sectorForTicker(t.ticker)) : [];
@@ -179,43 +179,41 @@ export default async function FollowingPage() {
                 ? r.return_pct * ((t.amount_min + t.amount_max) / 2)
                 : null;
             return (
-              <li key={t.id} className="card-pop animate-in accent-rail accent-following p-4" style={{ animationDelay: `${Math.min(i, 8) * 30}ms` }}>
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-stone-900 dark:text-stone-50">
-                      {p ? (
-                        <>
-                          <span className={`h-2 w-2 shrink-0 rounded-full ${partyStyle(p.party).dot}`} />
-                          <Link href={`/politicians/${p.id}`} className="hover:underline">
-                            {p.full_name}
-                          </Link>
-                        </>
-                      ) : (
-                        "Unknown"
-                      )}
-                      <TradeTypeBadge type={t.trade_type} />
-                      <Link
-                        href={`/stocks/${t.ticker}`}
-                        className="hover:underline"
-                        title={conflicts.length > 0 ? `Committee overlap: ${conflicts.map((c) => `${c.committee} oversees ${c.sector}`).join("; ")}` : undefined}
-                      >
-                        {t.ticker}
-                        {conflicts.length > 0 && <span style={{ color: "var(--cat-news)" }}>*</span>}
-                      </Link>
-                    </p>
-                    <p className="mt-0.5 text-xs text-stone-400 dark:text-stone-600">
-                      {relativeDate(t.transaction_date)}
-                    </p>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <p className="text-sm font-medium text-stone-700 dark:text-stone-300">{value}</p>
-                    {pnl !== null && (
-                      <p className={`text-xs font-medium ${pnl >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
-                        {pnl >= 0 ? "+" : "-"}${Math.abs(pnl).toLocaleString("en-US", { maximumFractionDigits: 0 })}
-                        {r && ` (${formatPct(r.return_pct ?? 0)})`}
-                      </p>
+              <li key={t.id} className="flex items-center justify-between gap-4 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-stone-900 dark:text-stone-50">
+                    {p ? (
+                      <>
+                        <span className={`h-2 w-2 shrink-0 rounded-full ${partyStyle(p.party).dot}`} />
+                        <Link href={`/politicians/${p.id}`} className="hover:underline">
+                          {p.full_name}
+                        </Link>
+                      </>
+                    ) : (
+                      "Unknown"
                     )}
-                  </div>
+                    <TradeTypeBadge type={t.trade_type} />
+                    <Link
+                      href={`/stocks/${t.ticker}`}
+                      className="hover:underline"
+                      title={conflicts.length > 0 ? `Committee overlap: ${conflicts.map((c) => `${c.committee} oversees ${c.sector}`).join("; ")}` : undefined}
+                    >
+                      {t.ticker}
+                      {conflicts.length > 0 && <span style={{ color: "var(--cat-news)" }}>*</span>}
+                    </Link>
+                  </p>
+                  <p className="mt-0.5 text-xs text-stone-400 dark:text-stone-600">
+                    {relativeDate(t.transaction_date)}
+                  </p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="text-sm font-medium text-stone-700 dark:text-stone-300">{value}</p>
+                  {pnl !== null && (
+                    <p className={`text-xs font-medium ${pnl >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+                      {pnl >= 0 ? "+" : "-"}${Math.abs(pnl).toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                      {r && ` (${formatPct(r.return_pct ?? 0)})`}
+                    </p>
+                  )}
                 </div>
               </li>
             );

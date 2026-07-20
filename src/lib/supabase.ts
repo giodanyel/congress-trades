@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { unstable_cache } from "next/cache";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -128,3 +129,32 @@ export type WatchlistItem = {
   ref_id: string;
   created_at: string;
 };
+
+// The homepage, both leaderboards, Interesting Buys, and Market News each
+// independently re-read every trade (3000+ rows) and every priced return on
+// every single visit -- that's the actual source of slow page loads, not
+// anything about the markup. The pages themselves still render per-request
+// (force-dynamic, so follow-button state etc is always current), but these
+// specific reads are wrapped in Next's Data Cache and only re-hit Supabase
+// once per revalidate window. Data only changes once or twice a day via the
+// cron pipeline, so a 30-minute cache costs nothing in practical freshness.
+export const getCachedTrades = unstable_cache(
+  () => fetchAllRows<Trade>("trades", "*"),
+  ["all-trades"],
+  { revalidate: 1800 }
+);
+
+export const getCachedTradeReturns = unstable_cache(
+  () => fetchAllRows<TradeReturn>("trade_returns", "*"),
+  ["all-trade-returns"],
+  { revalidate: 1800 }
+);
+
+export const getCachedPoliticians = unstable_cache(
+  async () => {
+    const { data } = await supabase.from("politicians").select("*").returns<Politician[]>();
+    return data ?? [];
+  },
+  ["all-politicians"],
+  { revalidate: 1800 }
+);

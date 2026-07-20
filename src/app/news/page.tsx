@@ -1,11 +1,13 @@
 import Link from "next/link";
-import { supabase, type Trade } from "@/lib/supabase";
+import { supabase, getCachedTrades } from "@/lib/supabase";
 import { quarterlyActivity, type MarketNews } from "@/lib/news";
 import { relativeDate } from "@/lib/ui";
 
+// Page renders per-request; the heavy trades read underneath is cached
+// via unstable_cache (see @/lib/supabase), not this.
 export const dynamic = "force-dynamic";
 
-const NEWS_LIMIT = 60;
+const NEWS_LIMIT = 24;
 const CURRENT_YEAR = new Date().getUTCFullYear();
 
 export default async function MarketNewsPage() {
@@ -17,15 +19,12 @@ export default async function MarketNewsPage() {
     .returns<MarketNews[]>();
 
   const items = news ?? [];
-  const tickers = [...new Set(items.map((n) => n.ticker))];
+  const tickers = new Set(items.map((n) => n.ticker));
 
-  const { data: trades } = await supabase
-    .from("trades")
-    .select("ticker, transaction_date, trade_type")
-    .in("ticker", tickers.length ? tickers : ["__none__"])
-    .returns<Pick<Trade, "ticker" | "transaction_date" | "trade_type">[]>();
-
-  const allTrades = (trades ?? []) as Trade[];
+  // Reuses the same cached trades read as every other page instead of a
+  // fresh filtered query -- one shared cache entry, not a new one per
+  // distinct set of tickers in today's headlines.
+  const allTrades = (await getCachedTrades()).filter((t) => tickers.has(t.ticker));
 
   return (
     <div className="flex flex-1 flex-col bg-background px-6 py-10">
@@ -53,69 +52,47 @@ export default async function MarketNewsPage() {
           </div>
         )}
 
-        <ul className="mt-6 flex flex-col gap-3">
-          {items.map((n, i) => {
+        <ul className="mt-6 divide-y divide-stone-100 card-pop accent-rail accent-news dark:divide-stone-900">
+          {items.map((n) => {
             const quarters = quarterlyActivity(n.ticker, allTrades, CURRENT_YEAR).slice(0, 3);
             const totalBuys = quarters.reduce((s, q) => s + q.buys, 0);
             const totalSells = quarters.reduce((s, q) => s + q.sells, 0);
             const anyActivity = totalBuys > 0 || totalSells > 0;
             return (
-              <li
-                key={n.id}
-                className="card-pop animate-in accent-rail accent-news p-4"
-                style={{ animationDelay: `${Math.min(i, 8) * 25}ms` }}
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Link
-                        href={`/stocks/${n.ticker}`}
-                        className="rounded-full px-2 py-0.5 text-xs font-semibold"
-                        style={{ backgroundColor: "var(--cat-stocks-soft)", color: "var(--cat-stocks)" }}
-                      >
-                        {n.ticker}
-                      </Link>
-                      <span className="text-xs text-stone-400 dark:text-stone-600">
-                        {n.source} &middot; {relativeDate(n.published_at)}
-                      </span>
-                    </div>
-                    <a
-                      href={n.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-1.5 block text-sm font-medium leading-snug text-stone-900 hover:underline dark:text-stone-50"
-                    >
-                      {n.headline}
-                    </a>
-                  </div>
-                </div>
-
-                <div className="mt-3 flex items-center gap-2 border-t border-stone-100 pt-3 dark:border-stone-900">
-                  {anyActivity ? (
-                    <span
-                      title={quarters.map((q) => `${q.quarter} ${CURRENT_YEAR}: ${q.buys} buys, ${q.sells} sells`).join(" · ")}
-                      className="inline-flex items-center gap-1 rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600 dark:bg-white/5 dark:text-stone-400"
-                    >
-                      {CURRENT_YEAR} so far:
-                      {totalBuys > 0 && (
-                        <span className="text-emerald-600 dark:text-emerald-400">+{totalBuys}</span>
-                      )}
-                      {totalSells > 0 && (
-                        <span className="text-rose-600 dark:text-rose-400">-{totalSells}</span>
-                      )}
-                    </span>
-                  ) : (
-                    <span className="text-[11px] text-stone-400 dark:text-stone-600">
-                      No congressional trades in {n.ticker} so far this year.
-                    </span>
-                  )}
-                  <Link
-                    href={`/stocks/${n.ticker}`}
-                    className="ml-auto text-[11px] font-medium text-stone-400 hover:text-stone-600 dark:text-stone-600 dark:hover:text-stone-300"
+              <li key={n.id} className="flex items-center gap-3 px-4 py-3">
+                <Link
+                  href={`/stocks/${n.ticker}`}
+                  className="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold"
+                  style={{ backgroundColor: "var(--cat-stocks-soft)", color: "var(--cat-stocks)" }}
+                >
+                  {n.ticker}
+                </Link>
+                <div className="min-w-0 flex-1">
+                  <a
+                    href={n.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block truncate text-sm font-medium text-stone-900 hover:underline dark:text-stone-50"
                   >
-                    Full activity &rarr;
-                  </Link>
+                    {n.headline}
+                  </a>
+                  <p className="text-xs text-stone-400 dark:text-stone-600">
+                    {n.source} &middot; {relativeDate(n.published_at)}
+                  </p>
                 </div>
+                {anyActivity && (
+                  <span
+                    title={quarters.map((q) => `${q.quarter} ${CURRENT_YEAR}: ${q.buys} buys, ${q.sells} sells`).join(" · ")}
+                    className="shrink-0 text-xs font-medium text-stone-500 dark:text-stone-400"
+                  >
+                    {totalBuys > 0 && (
+                      <span className="text-emerald-600 dark:text-emerald-400">+{totalBuys}</span>
+                    )}
+                    {totalSells > 0 && (
+                      <span className="text-rose-600 dark:text-rose-400">-{totalSells}</span>
+                    )}
+                  </span>
+                )}
               </li>
             );
           })}
