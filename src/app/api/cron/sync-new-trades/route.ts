@@ -107,6 +107,35 @@ function naturalKey(
   return `${politicianId}|${ticker}|${transactionDate}|${tradeType}|${owner}|${amountLabel ?? ""}`;
 }
 
+// A plain select() without an explicit range can silently come back short
+// on large tables depending on the client/project's default page size.
+// Paginating explicitly guarantees we see every existing trade -- without
+// this, rows past the cutoff look "new" to this route, which either
+// re-inserts them (duplicate-key failure, since external_id is uniquely
+// indexed) or, worse, aborts the whole run before the filing_date backfill
+// step ever executes.
+async function fetchAllRows<T>(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  table: string,
+  columns: string
+): Promise<T[]> {
+  const PAGE_SIZE = 1000;
+  const all: T[] = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await supabase
+      .from(table)
+      .select(columns)
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw new Error(error.message);
+    const page = (data ?? []) as T[];
+    all.push(...page);
+    if (page.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+  return all;
+}
+
 export async function GET(req: NextRequest) {
   if (!isAdminAuthorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -127,32 +156,24 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const [politiciansRes, existingTradesRes, existingStockRowsRes, sourceRes] =
-    await Promise.all([
-      supabase.from("politicians").select("*").returns<Politician[]>(),
-      supabase
-        .from("trades")
-        .select("id, politician_id, ticker, transaction_date, trade_type, owner, amount_label, external_id, filing_date")
-        .returns<ExistingTradeRow[]>(),
-      supabase.from("stocks").select("ticker"),
+  let politicians: Politician[];
+  let existingTrades: ExistingTradeRow[];
+  let existingStockRows: { ticker: string }[];
+  let sourceRes: Response;
+  try {
+    [politicians, existingTrades, existingStockRows, sourceRes] = await Promise.all([
+      fetchAllRows<Politician>(supabase, "politicians", "*"),
+      fetchAllRows<ExistingTradeRow>(
+        supabase,
+        "trades",
+        "id, politician_id, ticker, transaction_date, trade_type, owner, amount_label, external_id, filing_date"
+      ),
+      fetchAllRows<{ ticker: string }>(supabase, "stocks", "ticker"),
       fetch(TRADES_URL, { headers: { "User-Agent": "Mozilla/5.0 (compatible; CongressTradesBot/1.0)" } }),
     ]);
-
-  if (politiciansRes.error) {
+  } catch (err) {
     return NextResponse.json(
-      { error: `Loading politicians failed: ${politiciansRes.error.message}` },
-      { status: 500 }
-    );
-  }
-  if (existingTradesRes.error) {
-    return NextResponse.json(
-      { error: `Loading existing trades failed: ${existingTradesRes.error.message}` },
-      { status: 500 }
-    );
-  }
-  if (existingStockRowsRes.error) {
-    return NextResponse.json(
-      { error: `Loading existing stocks failed: ${existingStockRowsRes.error.message}` },
+      { error: err instanceof Error ? err.message : String(err) },
       { status: 500 }
     );
   }
@@ -162,10 +183,6 @@ export async function GET(req: NextRequest) {
       { status: 502 }
     );
   }
-
-  const politicians = politiciansRes.data;
-  const existingTrades = existingTradesRes.data;
-  const existingStockRows = existingStockRowsRes.data;
 
   const sourceTrades = (await sourceRes.json()) as KadoaTrade[];
 
@@ -202,6 +219,44 @@ export async function GET(req: NextRequest) {
 
   const knownTickers = new Set((existingStockRows ?? []).map((r) => r.ticker as string));
   const congressTrades = sourceTrades.filter((t) => t.branch === "congress");
+
+  // Fast, read-only diagnostic: report load counts and how many source
+  // records would be treated as already-known vs. new/backfillable, without
+  // running the (much slower) insert/backfill steps.
+  if (req.nextUrl.searchParams.get("diag") === "1") {
+    let wouldBackfill = 0;
+    let wouldInsert = 0;
+    let alreadyKnown = 0;
+    for (const t of congressTrades) {
+      if (knownExternalIds.has(t.id)) {
+        alreadyKnown++;
+        continue;
+      }
+      if (!t.ticker || !mapTradeType(t.transaction_type)) continue;
+      const politician = matchPolitician(t, byStateChamber);
+      if (!politician) continue;
+      const key = naturalKey(
+        politician.id,
+        t.ticker,
+        t.transaction_date,
+        mapTradeType(t.transaction_type)!,
+        mapOwner(t.owner),
+        t.amount_range_label
+      );
+      if (naturalKeyToId.has(key)) wouldBackfill++;
+      else wouldInsert++;
+    }
+    return NextResponse.json({
+      politiciansLoaded: (politicians ?? []).length,
+      existingTradesLoaded: (existingTrades ?? []).length,
+      existingWithExternalId: (existingTrades ?? []).filter((t) => t.external_id).length,
+      existingMissingFilingDate: externalIdToRowMissingFilingDate.size,
+      congressRecordsInSource: congressTrades.length,
+      alreadyKnown,
+      wouldBackfill,
+      wouldInsert,
+    });
+  }
 
   let skippedAlreadyKnown = 0;
   let skippedUnmatchedPolitician = 0;
