@@ -4,11 +4,10 @@ import {
   fetchAllRows,
   type Politician,
   type Trade,
-  type Stock,
   type TradeReturn,
   type WatchlistItem,
 } from "@/lib/supabase";
-import { partyStyle, relativeDate, titleCase } from "@/lib/ui";
+import { partyStyle, relativeDate } from "@/lib/ui";
 import { aggregateByPolitician, roiOf, isActive, sizeTier } from "@/lib/analytics";
 import { committeeConflicts } from "@/lib/committees";
 import { sectorForTicker } from "@/lib/sectors";
@@ -25,12 +24,11 @@ const CLUSTER_WINDOW_DAYS = 60;
 const CLUSTER_MIN_MEMBERS = 2;
 
 export default async function InterestingBuysPage() {
-  const [{ data: politicians }, trades, returns, { data: stocks }, { data: watchlist }] =
+  const [{ data: politicians }, trades, returns, { data: watchlist }] =
     await Promise.all([
       supabase.from("politicians").select("*").returns<Politician[]>(),
       fetchAllRows<Trade>("trades", "*"),
       fetchAllRows<TradeReturn>("trade_returns", "*"),
-      supabase.from("stocks").select("*").returns<Stock[]>(),
       supabase.from("watchlist_items").select("*").returns<WatchlistItem[]>(),
     ]);
 
@@ -39,7 +37,6 @@ export default async function InterestingBuysPage() {
   );
 
   const politicianById = new Map((politicians ?? []).map((p) => [p.id, p]));
-  const stockByTicker = new Map((stocks ?? []).map((s) => [s.ticker, s]));
   const returnByTradeId = new Map(returns.map((r) => [r.trade_id, r]));
   const allTrades = trades ?? [];
   const roiByPolitician = aggregateByPolitician(allTrades, returnByTradeId);
@@ -103,6 +100,7 @@ export default async function InterestingBuysPage() {
     }
 
     if (flags.length === 0) continue;
+    flags.sort((a, b) => b.weight - a.weight);
 
     const score = flags.reduce((s, f) => s + f.weight, 0);
     rows.push({ trade: t, politician: p, flags, score });
@@ -137,7 +135,6 @@ export default async function InterestingBuysPage() {
         <ul className="mt-6 flex flex-col gap-3">
           {rows.map(({ trade: t, politician: p, flags }, i) => {
             const style = partyStyle(p.party);
-            const stock = stockByTicker.get(t.ticker);
             const r = returnByTradeId.get(t.id);
             const preMove = r?.pre_disclosure_move_pct ?? null;
             return (
@@ -158,9 +155,8 @@ export default async function InterestingBuysPage() {
                         {t.ticker}
                       </Link>
                     </p>
-                    <p className="mt-0.5 text-xs text-stone-500 dark:text-stone-400">
-                      {stock?.company_name ?? t.ticker} &middot; {relativeDate(t.transaction_date)}
-                      {" "}&middot; {titleCase(p.party)} &middot; {p.state}
+                    <p className="mt-0.5 text-xs text-stone-400 dark:text-stone-600">
+                      {p.state} &middot; {relativeDate(t.transaction_date)}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
@@ -175,8 +171,8 @@ export default async function InterestingBuysPage() {
                     />
                   </div>
                 </div>
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {flags.map((f) => (
+                <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                  {flags.slice(0, 2).map((f) => (
                     <span
                       key={f.label}
                       className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300"
@@ -184,18 +180,24 @@ export default async function InterestingBuysPage() {
                       {f.label}
                     </span>
                   ))}
+                  {flags.length > 2 && (
+                    <span
+                      title={flags.slice(2).map((f) => f.label).join("; ")}
+                      className="text-xs font-medium text-stone-400 dark:text-stone-600"
+                    >
+                      +{flags.length - 2} more
+                    </span>
+                  )}
+                  {preMove !== null && t.filing_date && (
+                    <span
+                      title={`By the ${t.filing_date} disclosure, the price had already ${preMove >= 0 ? "risen" : "fallen"} ${Math.abs(preMove * 100).toFixed(1)}% from the trade price.`}
+                      className={`ml-auto text-xs font-medium ${preMove >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
+                    >
+                      {preMove >= 0 ? "+" : ""}
+                      {(preMove * 100).toFixed(1)}% pre-disclosure
+                    </span>
+                  )}
                 </div>
-                {preMove !== null && t.filing_date ? (
-                  <p className="mt-2 text-xs text-stone-500 dark:text-stone-400">
-                    By the {t.filing_date} disclosure, the price had already{" "}
-                    {preMove >= 0 ? "risen" : "fallen"} {Math.abs(preMove * 100).toFixed(1)}% from
-                    the trade price.
-                  </p>
-                ) : (
-                  <p className="mt-2 text-xs text-stone-400 dark:text-stone-600">
-                    Disclosure lag / price-move data not available yet for this trade.
-                  </p>
-                )}
               </li>
             );
           })}

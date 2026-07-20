@@ -5,13 +5,10 @@ import {
   estimatedTradeValue,
   type Politician,
   type Trade,
-  type Stock,
   type TradeReturn,
 } from "@/lib/supabase";
-import { partyStyle, formatUsd, formatPct, relativeDate, titleCase } from "@/lib/ui";
+import { partyStyle, formatUsd, formatPct, relativeDate } from "@/lib/ui";
 import { aggregateByPolitician, roiOf, alphaOf, ACTIVE_WINDOW_DAYS } from "@/lib/analytics";
-import { sectorForTicker } from "@/lib/sectors";
-import { committeeConflicts } from "@/lib/committees";
 import { FollowButton } from "@/components/FollowButton";
 import type { WatchlistItem } from "@/lib/supabase";
 
@@ -23,12 +20,11 @@ const RECENT_BUYS_LIMIT = 12;
 const TOP_PERFORMERS_LIMIT = 8;
 
 export default async function Home() {
-  const [{ data: politicians }, trades, returns, { data: stocks }, { data: watchlist }] =
+  const [{ data: politicians }, trades, returns, { data: watchlist }] =
     await Promise.all([
       supabase.from("politicians").select("*").returns<Politician[]>(),
       fetchAllRows<Trade>("trades", "*"),
       fetchAllRows<TradeReturn>("trade_returns", "*"),
-      supabase.from("stocks").select("*").returns<Stock[]>(),
       supabase.from("watchlist_items").select("*").returns<WatchlistItem[]>(),
     ]);
 
@@ -37,7 +33,6 @@ export default async function Home() {
   );
 
   const politicianById = new Map((politicians ?? []).map((p) => [p.id, p]));
-  const stockByTicker = new Map((stocks ?? []).map((s) => [s.ticker, s]));
   const returnByTradeId = new Map((returns ?? []).map((r) => [r.trade_id, r]));
 
   const now = Date.now();
@@ -173,19 +168,8 @@ export default async function Home() {
                       {formatPct(row.roi)}
                     </span>
                   </div>
-                  <p className="mt-2 text-xs text-stone-500 dark:text-stone-400">
-                    {style.label} &middot; {row.politician.state} &middot; last trade{" "}
-                    {relativeDate(row.agg.lastTradeDate)}
-                    {row.alpha !== null && (
-                      <>
-                        {" "}
-                        &middot;{" "}
-                        <span className={row.alpha >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}>
-                          {row.alpha >= 0 ? "+" : ""}
-                          {(row.alpha * 100).toFixed(0)} pts vs S&amp;P 500
-                        </span>
-                      </>
-                    )}
+                  <p className="mt-1.5 text-xs text-stone-400 dark:text-stone-600">
+                    {row.politician.state} &middot; {relativeDate(row.agg.lastTradeDate)}
                   </p>
                 </Link>
               </div>
@@ -215,9 +199,7 @@ export default async function Home() {
         <ul className="mt-4 divide-y divide-stone-100 card-pop accent-rail accent-stocks dark:divide-stone-900">
           {recentBuys.map((t) => {
             const p = politicianById.get(t.politician_id);
-            const stock = stockByTicker.get(t.ticker);
             const style = p ? partyStyle(p.party) : null;
-            const conflicts = p ? committeeConflicts(p.id, sectorForTicker(t.ticker)) : [];
             return (
               <li key={t.id} className="flex items-center justify-between gap-4 px-4 py-3">
                 <div className="flex min-w-0 items-center gap-3">
@@ -235,18 +217,9 @@ export default async function Home() {
                       <Link href={`/stocks/${t.ticker}`} className="hover:underline">
                         {t.ticker}
                       </Link>
-                      {conflicts.length > 0 && (
-                        <span
-                          title={`Sits on ${conflicts[0].committee}, which has jurisdiction over ${conflicts[0].sector}`}
-                          className="ml-1.5 rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300"
-                        >
-                          committee overlap
-                        </span>
-                      )}
                     </p>
-                    <p className="mt-0.5 truncate text-xs text-stone-500 dark:text-stone-400">
-                      {stock?.company_name ?? t.ticker} &middot; {relativeDate(t.transaction_date)}
-                      {p ? ` · ${titleCase(p.party)}` : ""}
+                    <p className="mt-0.5 truncate text-xs text-stone-400 dark:text-stone-600">
+                      {relativeDate(t.transaction_date)}
                     </p>
                   </div>
                 </div>

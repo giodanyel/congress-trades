@@ -8,7 +8,7 @@ import {
   type TradeReturn,
   type WatchlistItem,
 } from "@/lib/supabase";
-import { partyStyle, relativeDate, titleCase, formatPct } from "@/lib/ui";
+import { partyStyle, relativeDate, formatPct } from "@/lib/ui";
 import { TradeTypeBadge } from "@/components/TradeTypeBadge";
 import { FollowButton } from "@/components/FollowButton";
 import { committeeConflicts } from "@/lib/committees";
@@ -171,7 +171,6 @@ export default async function FollowingPage() {
         <ul className="flex flex-col gap-3">
           {trades.slice(0, TRADE_LIMIT_PER_ITEM * Math.max(1, followedPoliticianIds.length + followedTickers.length)).map((t, i) => {
             const p = politicianById.get(t.politician_id);
-            const stock = stockByTicker.get(t.ticker);
             const r = returnByTradeId.get(t.id);
             const conflicts = p ? committeeConflicts(p.id, sectorForTicker(t.ticker)) : [];
             const value = t.amount_label;
@@ -195,21 +194,17 @@ export default async function FollowingPage() {
                         "Unknown"
                       )}
                       <TradeTypeBadge type={t.trade_type} />
-                      <Link href={`/stocks/${t.ticker}`} className="hover:underline">
+                      <Link
+                        href={`/stocks/${t.ticker}`}
+                        className="hover:underline"
+                        title={conflicts.length > 0 ? `Committee overlap: ${conflicts.map((c) => `${c.committee} oversees ${c.sector}`).join("; ")}` : undefined}
+                      >
                         {t.ticker}
+                        {conflicts.length > 0 && <span style={{ color: "var(--cat-news)" }}>*</span>}
                       </Link>
-                      {conflicts.length > 0 && (
-                        <span
-                          title={conflicts.map((c) => `${c.committee} oversees ${c.sector}`).join("; ")}
-                          className="rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300"
-                        >
-                          committee overlap
-                        </span>
-                      )}
                     </p>
-                    <p className="mt-0.5 text-xs text-stone-500 dark:text-stone-400">
-                      {stock?.company_name ?? t.ticker} &middot; {relativeDate(t.transaction_date)}
-                      {p ? ` · ${titleCase(p.party)} · ${p.state}` : ""}
+                    <p className="mt-0.5 text-xs text-stone-400 dark:text-stone-600">
+                      {relativeDate(t.transaction_date)}
                     </p>
                   </div>
                   <div className="shrink-0 text-right">

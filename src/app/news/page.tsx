@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { supabase, type Trade, type Stock } from "@/lib/supabase";
+import { supabase, type Trade } from "@/lib/supabase";
 import { quarterlyActivity, type MarketNews } from "@/lib/news";
 import { relativeDate } from "@/lib/ui";
 
@@ -19,20 +19,12 @@ export default async function MarketNewsPage() {
   const items = news ?? [];
   const tickers = [...new Set(items.map((n) => n.ticker))];
 
-  const [{ data: trades }, { data: stocks }] = await Promise.all([
-    supabase
-      .from("trades")
-      .select("ticker, transaction_date, trade_type")
-      .in("ticker", tickers.length ? tickers : ["__none__"])
-      .returns<Pick<Trade, "ticker" | "transaction_date" | "trade_type">[]>(),
-    supabase
-      .from("stocks")
-      .select("*")
-      .in("ticker", tickers.length ? tickers : ["__none__"])
-      .returns<Stock[]>(),
-  ]);
+  const { data: trades } = await supabase
+    .from("trades")
+    .select("ticker, transaction_date, trade_type")
+    .in("ticker", tickers.length ? tickers : ["__none__"])
+    .returns<Pick<Trade, "ticker" | "transaction_date" | "trade_type">[]>();
 
-  const stockByTicker = new Map((stocks ?? []).map((s) => [s.ticker, s]));
   const allTrades = (trades ?? []) as Trade[];
 
   return (
@@ -63,9 +55,10 @@ export default async function MarketNewsPage() {
 
         <ul className="mt-6 flex flex-col gap-3">
           {items.map((n, i) => {
-            const stock = stockByTicker.get(n.ticker);
             const quarters = quarterlyActivity(n.ticker, allTrades, CURRENT_YEAR).slice(0, 3);
-            const anyActivity = quarters.some((q) => q.buys > 0 || q.sells > 0);
+            const totalBuys = quarters.reduce((s, q) => s + q.buys, 0);
+            const totalSells = quarters.reduce((s, q) => s + q.sells, 0);
+            const anyActivity = totalBuys > 0 || totalSells > 0;
             return (
               <li
                 key={n.id}
@@ -94,33 +87,23 @@ export default async function MarketNewsPage() {
                     >
                       {n.headline}
                     </a>
-                    {stock && (
-                      <p className="mt-0.5 text-xs text-stone-400 dark:text-stone-600">
-                        {stock.company_name}
-                      </p>
-                    )}
                   </div>
                 </div>
 
-                <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-stone-100 pt-3 dark:border-stone-900">
+                <div className="mt-3 flex items-center gap-2 border-t border-stone-100 pt-3 dark:border-stone-900">
                   {anyActivity ? (
-                    quarters.map((q) => (
-                      <span
-                        key={q.quarter}
-                        className="inline-flex items-center gap-1 rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600 dark:bg-white/5 dark:text-stone-400"
-                      >
-                        {q.quarter} {CURRENT_YEAR}:
-                        {q.buys > 0 && (
-                          <span className="text-emerald-600 dark:text-emerald-400">+{q.buys}</span>
-                        )}
-                        {q.sells > 0 && (
-                          <span className="text-rose-600 dark:text-rose-400">-{q.sells}</span>
-                        )}
-                        {q.buys === 0 && q.sells === 0 && (
-                          <span className="text-stone-400 dark:text-stone-600">&mdash;</span>
-                        )}
-                      </span>
-                    ))
+                    <span
+                      title={quarters.map((q) => `${q.quarter} ${CURRENT_YEAR}: ${q.buys} buys, ${q.sells} sells`).join(" · ")}
+                      className="inline-flex items-center gap-1 rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600 dark:bg-white/5 dark:text-stone-400"
+                    >
+                      {CURRENT_YEAR} so far:
+                      {totalBuys > 0 && (
+                        <span className="text-emerald-600 dark:text-emerald-400">+{totalBuys}</span>
+                      )}
+                      {totalSells > 0 && (
+                        <span className="text-rose-600 dark:text-rose-400">-{totalSells}</span>
+                      )}
+                    </span>
                   ) : (
                     <span className="text-[11px] text-stone-400 dark:text-stone-600">
                       No congressional trades in {n.ticker} so far this year.
