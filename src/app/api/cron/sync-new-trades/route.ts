@@ -294,6 +294,7 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({
+    debugVersion: "v3",
     sourceRecords: sourceTrades.length,
     congressRecords: congressTrades.length,
     newTrades: newTradeRows.length,
