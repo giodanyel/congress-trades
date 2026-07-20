@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   supabase,
+  fetchAllRows,
   estimatedTradeValue,
   type Politician,
   type Trade,
@@ -22,11 +23,11 @@ const RECENT_BUYS_LIMIT = 12;
 const TOP_PERFORMERS_LIMIT = 8;
 
 export default async function Home() {
-  const [{ data: politicians }, { data: trades }, { data: returns }, { data: stocks }, { data: watchlist }] =
+  const [{ data: politicians }, trades, returns, { data: stocks }, { data: watchlist }] =
     await Promise.all([
       supabase.from("politicians").select("*").returns<Politician[]>(),
-      supabase.from("trades").select("*").returns<Trade[]>(),
-      supabase.from("trade_returns").select("*").returns<TradeReturn[]>(),
+      fetchAllRows<Trade>("trades", "*"),
+      fetchAllRows<TradeReturn>("trade_returns", "*"),
       supabase.from("stocks").select("*").returns<Stock[]>(),
       supabase.from("watchlist_items").select("*").returns<WatchlistItem[]>(),
     ]);

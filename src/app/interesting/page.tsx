@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   supabase,
+  fetchAllRows,
   type Politician,
   type Trade,
   type Stock,
@@ -24,11 +25,11 @@ const CLUSTER_WINDOW_DAYS = 60;
 const CLUSTER_MIN_MEMBERS = 2;
 
 export default async function InterestingBuysPage() {
-  const [{ data: politicians }, { data: trades }, { data: returns }, { data: stocks }, { data: watchlist }] =
+  const [{ data: politicians }, trades, returns, { data: stocks }, { data: watchlist }] =
     await Promise.all([
       supabase.from("politicians").select("*").returns<Politician[]>(),
-      supabase.from("trades").select("*").returns<Trade[]>(),
-      supabase.from("trade_returns").select("*").returns<TradeReturn[]>(),
+      fetchAllRows<Trade>("trades", "*"),
+      fetchAllRows<TradeReturn>("trade_returns", "*"),
       supabase.from("stocks").select("*").returns<Stock[]>(),
       supabase.from("watchlist_items").select("*").returns<WatchlistItem[]>(),
     ]);
@@ -39,7 +40,7 @@ export default async function InterestingBuysPage() {
 
   const politicianById = new Map((politicians ?? []).map((p) => [p.id, p]));
   const stockByTicker = new Map((stocks ?? []).map((s) => [s.ticker, s]));
-  const returnByTradeId = new Map((returns ?? []).map((r) => [r.trade_id, r]));
+  const returnByTradeId = new Map(returns.map((r) => [r.trade_id, r]));
   const allTrades = trades ?? [];
   const roiByPolitician = aggregateByPolitician(allTrades, returnByTradeId);
 

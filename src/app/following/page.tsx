@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   supabase,
+  fetchAllRows,
   type Politician,
   type Trade,
   type Stock,
@@ -64,7 +65,14 @@ export default async function FollowingPage() {
     );
   }
 
-  const [{ data: politicians }, { data: stocksData }, { data: allTrades }, { data: returns }] =
+  const followedFilter = [
+    followedPoliticianIds.length ? `politician_id.in.(${followedPoliticianIds.join(",")})` : null,
+    followedTickers.length ? `ticker.in.(${followedTickers.join(",")})` : null,
+  ]
+    .filter(Boolean)
+    .join(",");
+
+  const [{ data: politicians }, { data: stocksData }, trades, returns] =
     await Promise.all([
       supabase
         .from("politicians")
@@ -76,26 +84,15 @@ export default async function FollowingPage() {
         .select("*")
         .in("ticker", followedTickers.length ? followedTickers : ["__none__"])
         .returns<Stock[]>(),
-      supabase
-        .from("trades")
-        .select("*")
-        .or(
-          [
-            followedPoliticianIds.length ? `politician_id.in.(${followedPoliticianIds.join(",")})` : null,
-            followedTickers.length ? `ticker.in.(${followedTickers.join(",")})` : null,
-          ]
-            .filter(Boolean)
-            .join(",")
-        )
-        .order("transaction_date", { ascending: false })
-        .returns<Trade[]>(),
-      supabase.from("trade_returns").select("*").returns<TradeReturn[]>(),
+      fetchAllRows<Trade>("trades", "*", (q) => q.or(followedFilter)),
+      fetchAllRows<TradeReturn>("trade_returns", "*"),
     ]);
+
+  trades.sort((a, b) => b.transaction_date.localeCompare(a.transaction_date));
 
   const politicianById = new Map((politicians ?? []).map((p) => [p.id, p]));
   const stockByTicker = new Map((stocksData ?? []).map((s) => [s.ticker, s]));
-  const returnByTradeId = new Map((returns ?? []).map((r) => [r.trade_id, r]));
-  const trades = allTrades ?? [];
+  const returnByTradeId = new Map(returns.map((r) => [r.trade_id, r]));
 
   return (
     <div className="flex flex-1 flex-col bg-background px-6 py-10">

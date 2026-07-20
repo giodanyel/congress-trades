@@ -14,6 +14,37 @@ if (!supabaseUrl || !supabaseAnonKey) {
 // we introduce a service-role key for admin/ingestion use in a later phase.
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// A plain .select() without an explicit range silently comes back capped
+// (this project's Supabase/PostgREST default is 1000 rows) once a table
+// crosses that size -- confirmed on `trades` (3000+ rows, homepage was
+// quietly showing a 1000-row subset). Every unfiltered fetch of `trades`
+// or `trade_returns` needs to paginate through with .range() to see
+// everything, the same fix already applied to the admin/cron routes.
+export async function fetchAllRows<T>(
+  table: string,
+  columns: string,
+  // Untyped on purpose: Postgrest's filter-builder generics don't compose
+  // cleanly through an arbitrary chain of .eq()/.or()/.order() calls.
+  // Runtime behavior and the actual data shape (T) are unaffected.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  modify?: (query: any) => any
+): Promise<T[]> {
+  const PAGE_SIZE = 1000;
+  const all: T[] = [];
+  let from = 0;
+  for (;;) {
+    let query = supabase.from(table).select(columns);
+    if (modify) query = modify(query);
+    const { data, error } = await query.range(from, from + PAGE_SIZE - 1);
+    if (error) throw new Error(error.message);
+    const page = (data ?? []) as T[];
+    all.push(...page);
+    if (page.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+  return all;
+}
+
 export type Party = "DEMOCRAT" | "REPUBLICAN" | "INDEPENDENT";
 export type Chamber = "SENATE" | "HOUSE";
 

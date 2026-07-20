@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   supabase,
+  fetchAllRows,
   type Politician,
   type Trade,
   type TradeReturn,
@@ -11,15 +12,15 @@ import { aggregateByPolitician, roiOf, alphaOf } from "@/lib/analytics";
 export const dynamic = "force-dynamic";
 
 export default async function RoiLeaderboardPage() {
-  const [{ data: politicians }, { data: trades }, { data: returns }] =
+  const [{ data: politicians }, trades, returns] =
     await Promise.all([
       supabase.from("politicians").select("*").returns<Politician[]>(),
-      supabase.from("trades").select("*").returns<Trade[]>(),
-      supabase.from("trade_returns").select("*").returns<TradeReturn[]>(),
+      fetchAllRows<Trade>("trades", "*"),
+      fetchAllRows<TradeReturn>("trade_returns", "*"),
     ]);
 
-  const returnByTradeId = new Map((returns ?? []).map((r) => [r.trade_id, r]));
-  const byPolitician = aggregateByPolitician(trades ?? [], returnByTradeId);
+  const returnByTradeId = new Map(returns.map((r) => [r.trade_id, r]));
+  const byPolitician = aggregateByPolitician(trades, returnByTradeId);
 
   const rows = (politicians ?? [])
     .map((p) => ({ politician: p, agg: byPolitician.get(p.id) }))

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   supabase,
+  fetchAllRows,
   estimatedTradeValue,
   type Politician,
   type Trade,
@@ -15,17 +16,14 @@ export default async function LeaderboardPage() {
     .select("*")
     .returns<Politician[]>();
 
-  const { data: trades } = await supabase
-    .from("trades")
-    .select("*")
-    .returns<Trade[]>();
+  const trades = await fetchAllRows<Trade>("trades", "*");
 
   const byPolitician = new Map<
     string,
     { tradeCount: number; purchases: number; sales: number; volume: number }
   >();
 
-  for (const t of trades ?? []) {
+  for (const t of trades) {
     const entry = byPolitician.get(t.politician_id) ?? {
       tradeCount: 0,
       purchases: 0,
