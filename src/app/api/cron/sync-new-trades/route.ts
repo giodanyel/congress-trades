@@ -33,6 +33,17 @@ type KadoaTrade = {
   doc_url: string | null;
 };
 
+type ExistingTradeRow = {
+  id: string;
+  politician_id: string;
+  ticker: string;
+  transaction_date: string;
+  trade_type: string;
+  owner: string;
+  amount_label: string | null;
+  external_id: string | null;
+};
+
 function normalizeName(s: string) {
   return s
     .toLowerCase()
@@ -81,6 +92,20 @@ function matchPolitician(
   return null;
 }
 
+// Trades from the original bundled seed have no external_id, so a trade
+// already in the DB has to be recognized by its real-world identity
+// (who, what, when, what kind, how much) -- not just the source's row id.
+function naturalKey(
+  politicianId: string,
+  ticker: string,
+  transactionDate: string,
+  tradeType: string,
+  owner: string,
+  amountLabel: string | null
+) {
+  return `${politicianId}|${ticker}|${transactionDate}|${tradeType}|${owner}|${amountLabel ?? ""}`;
+}
+
 export async function GET(req: NextRequest) {
   if (!isAdminAuthorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -88,10 +113,26 @@ export async function GET(req: NextRequest) {
 
   const supabase = getSupabaseAdmin();
 
-  const [{ data: politicians }, { data: existingExternalRows }, { data: existingStockRows }, sourceRes] =
+  // One-time cleanup switch: the first version of this route matched
+  // purely on external_id and didn't know about the un-tagged seed trades,
+  // so it inserted duplicates of everything already in the 2025-2026
+  // window. ?reset=1 removes that bad batch (identifiable because they're
+  // the only rows with external_id set) before re-running with correct
+  // natural-key dedup.
+  if (req.nextUrl.searchParams.get("reset") === "1") {
+    const { error } = await supabase.from("trades").delete().not("external_id", "is", null);
+    if (error) {
+      return NextResponse.json({ error: `Reset failed: ${error.message}` }, { status: 500 });
+    }
+  }
+
+  const [{ data: politicians }, { data: existingTrades }, { data: existingStockRows }, sourceRes] =
     await Promise.all([
       supabase.from("politicians").select("*").returns<Politician[]>(),
-      supabase.from("trades").select("external_id").not("external_id", "is", null),
+      supabase
+        .from("trades")
+        .select("id, politician_id, ticker, transaction_date, trade_type, owner, amount_label, external_id")
+        .returns<ExistingTradeRow[]>(),
       supabase.from("stocks").select("ticker"),
       fetch(TRADES_URL, { headers: { "User-Agent": "Mozilla/5.0 (compatible; CongressTradesBot/1.0)" } }),
     ]);
@@ -113,18 +154,34 @@ export async function GET(req: NextRequest) {
     byStateChamber.set(key, arr);
   }
 
-  const knownExternalIds = new Set((existingExternalRows ?? []).map((r) => r.external_id as string));
-  const knownTickers = new Set((existingStockRows ?? []).map((r) => r.ticker as string));
+  const knownExternalIds = new Set<string>();
+  // For rows that don't have an external_id yet (the original seed), map
+  // their natural key to their row id so a matching source record can
+  // backfill the external_id instead of being inserted as a duplicate.
+  const naturalKeyToId = new Map<string, string>();
+  for (const t of existingTrades ?? []) {
+    if (t.external_id) {
+      knownExternalIds.add(t.external_id);
+    } else {
+      naturalKeyToId.set(
+        naturalKey(t.politician_id, t.ticker, t.transaction_date, t.trade_type, t.owner, t.amount_label),
+        t.id
+      );
+    }
+  }
 
+  const knownTickers = new Set((existingStockRows ?? []).map((r) => r.ticker as string));
   const congressTrades = sourceTrades.filter((t) => t.branch === "congress");
 
   let skippedAlreadyKnown = 0;
   let skippedUnmatchedPolitician = 0;
   let skippedNoTicker = 0;
   let skippedUnmappedType = 0;
+  let backfilled = 0;
 
   const newStocks = new Map<string, string>();
   const newTradeRows: Record<string, unknown>[] = [];
+  const backfillIds: { id: string; external_id: string }[] = [];
 
   for (const t of congressTrades) {
     if (knownExternalIds.has(t.id)) {
@@ -143,6 +200,21 @@ export async function GET(req: NextRequest) {
     const politician = matchPolitician(t, byStateChamber);
     if (!politician) {
       skippedUnmatchedPolitician++;
+      continue;
+    }
+
+    const key = naturalKey(
+      politician.id,
+      t.ticker,
+      t.transaction_date,
+      tradeType,
+      mapOwner(t.owner),
+      t.amount_range_label
+    );
+    const existingId = naturalKeyToId.get(key);
+    if (existingId) {
+      backfillIds.push({ id: existingId, external_id: t.id });
+      backfilled++;
       continue;
     }
 
@@ -179,11 +251,22 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Backfill in small concurrent batches -- these are simple single-row
+  // updates keyed by primary key, cheap enough to parallelize a bit.
+  const BACKFILL_CONCURRENCY = 10;
+  for (let i = 0; i < backfillIds.length; i += BACKFILL_CONCURRENCY) {
+    const slice = backfillIds.slice(i, i + BACKFILL_CONCURRENCY);
+    await Promise.all(
+      slice.map(({ id, external_id }) => supabase.from("trades").update({ external_id }).eq("id", id))
+    );
+  }
+
   return NextResponse.json({
     sourceRecords: sourceTrades.length,
     congressRecords: congressTrades.length,
     newTrades: newTradeRows.length,
     newStocks: newStocks.size,
+    backfilled,
     skippedAlreadyKnown,
     skippedUnmatchedPolitician,
     skippedNoTicker,
