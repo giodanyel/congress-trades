@@ -1,0 +1,159 @@
+import Link from "next/link";
+import {
+  supabase,
+  type Politician,
+  type Trade,
+  type Stock,
+  type TradeReturn,
+} from "@/lib/supabase";
+import { partyStyle, relativeDate, titleCase } from "@/lib/ui";
+import { aggregateByPolitician, roiOf, isActive, sizeTier } from "@/lib/analytics";
+
+export const dynamic = "force-dynamic";
+
+// A buy counts as "interesting" if it's recent and has at least one flag:
+// unusually large, bought by multiple members around the same time, or
+// bought by a politician who's currently outperforming on priced trades.
+const RECENT_DAYS = 45;
+const CLUSTER_WINDOW_DAYS = 60;
+const CLUSTER_MIN_MEMBERS = 2;
+
+export default async function InterestingBuysPage() {
+  const [{ data: politicians }, { data: trades }, { data: returns }, { data: stocks }] =
+    await Promise.all([
+      supabase.from("politicians").select("*").returns<Politician[]>(),
+      supabase.from("trades").select("*").returns<Trade[]>(),
+      supabase.from("trade_returns").select("*").returns<TradeReturn[]>(),
+      supabase.from("stocks").select("*").returns<Stock[]>(),
+    ]);
+
+  const politicianById = new Map((politicians ?? []).map((p) => [p.id, p]));
+  const stockByTicker = new Map((stocks ?? []).map((s) => [s.ticker, s]));
+  const returnByTradeId = new Map((returns ?? []).map((r) => [r.trade_id, r]));
+  const allTrades = trades ?? [];
+  const roiByPolitician = aggregateByPolitician(allTrades, returnByTradeId);
+
+  const now = Date.now();
+  const recentCutoff = now - RECENT_DAYS * 24 * 60 * 60 * 1000;
+  const clusterCutoff = now - CLUSTER_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+
+  // Cluster signal: how many distinct politicians bought this ticker within
+  // the cluster window (looked at across ALL trades, not just recent buys,
+  // so a buy today still "sees" other members who bought last month too).
+  const buyersByTicker = new Map<string, Set<string>>();
+  for (const t of allTrades) {
+    if (t.trade_type !== "PURCHASE") continue;
+    if (new Date(t.transaction_date).getTime() < clusterCutoff) continue;
+    const set = buyersByTicker.get(t.ticker) ?? new Set<string>();
+    set.add(t.politician_id);
+    buyersByTicker.set(t.ticker, set);
+  }
+
+  type Flag = { label: string; weight: number };
+  type Row = { trade: Trade; politician: Politician; flags: Flag[]; score: number };
+
+  const rows: Row[] = [];
+
+  for (const t of allTrades) {
+    if (t.trade_type !== "PURCHASE") continue;
+    if (new Date(t.transaction_date).getTime() < recentCutoff) continue;
+    const p = politicianById.get(t.politician_id);
+    if (!p) continue;
+
+    const flags: Flag[] = [];
+
+    const tier = sizeTier(t.amount_max);
+    if (tier) flags.push(tier);
+
+    const clusterCount = buyersByTicker.get(t.ticker)?.size ?? 0;
+    if (clusterCount >= CLUSTER_MIN_MEMBERS) {
+      flags.push({
+        label: `${clusterCount} members bought ${t.ticker} recently`,
+        weight: clusterCount,
+      });
+    }
+
+    const agg = roiByPolitician.get(p.id);
+    if (agg && agg.pricedTrades > 0 && isActive(agg, now)) {
+      const roi = roiOf(agg);
+      if (roi > 0) {
+        flags.push({ label: `${p.full_name.split(" ").slice(-1)[0]} is currently up ${(roi * 100).toFixed(0)}%`, weight: Math.min(roi * 10, 4) });
+      }
+    }
+
+    if (flags.length === 0) continue;
+
+    const score = flags.reduce((s, f) => s + f.weight, 0);
+    rows.push({ trade: t, politician: p, flags, score });
+  }
+
+  rows.sort((a, b) => b.score - a.score || b.trade.transaction_date.localeCompare(a.trade.transaction_date));
+
+  return (
+    <div className="flex flex-1 flex-col bg-white px-6 py-10 dark:bg-black">
+      <div className="mx-auto w-full max-w-3xl">
+        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+          Interesting Buys
+        </h1>
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
+          Purchases from the last {RECENT_DAYS} days worth a second look: unusually
+          large disclosed amounts, tickers multiple members bought around the
+          same time, or buys from politicians currently outperforming on their
+          priced trades. This is a screen to help you look further, not
+          investment advice.
+        </p>
+
+        {rows.length === 0 && (
+          <div className="mt-6 rounded-xl border border-zinc-200 p-4 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+            Nothing stands out from the last {RECENT_DAYS} days yet.
+          </div>
+        )}
+
+        <ul className="mt-6 flex flex-col gap-3">
+          {rows.map(({ trade: t, politician: p, flags }) => {
+            const style = partyStyle(p.party);
+            const stock = stockByTicker.get(t.ticker);
+            return (
+              <li
+                key={t.id}
+                className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                      <span className={`h-2 w-2 shrink-0 rounded-full ${style.dot}`} />
+                      <Link href={`/politicians/${p.id}`} className="hover:underline">
+                        {p.full_name}
+                      </Link>
+                      <span className="font-normal text-zinc-400">bought</span>
+                      <Link href={`/stocks/${t.ticker}`} className="hover:underline">
+                        {t.ticker}
+                      </Link>
+                    </p>
+                    <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                      {stock?.company_name ?? t.ticker} &middot; {relativeDate(t.transaction_date)}
+                      {" "}&middot; {titleCase(p.party)} &middot; {p.state}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    {t.amount_label}
+                  </span>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {flags.map((f) => (
+                    <span
+                      key={f.label}
+                      className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                    >
+                      {f.label}
+                    </span>
+                  ))}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </div>
+  );
+}
