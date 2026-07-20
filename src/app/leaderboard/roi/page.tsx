@@ -1,0 +1,195 @@
+import Link from "next/link";
+import {
+  supabase,
+  estimatedTradeValue,
+  type Politician,
+  type Trade,
+  type TradeReturn,
+} from "@/lib/supabase";
+
+export const dynamic = "force-dynamic";
+
+function formatPct(value: number) {
+  return `${value >= 0 ? "+" : ""}${(value * 100).toFixed(1)}%`;
+}
+
+function titleCase(s: string) {
+  return s.charAt(0) + s.slice(1).toLowerCase();
+}
+
+const confidenceStyle: Record<string, string> = {
+  HIGH: "text-emerald-600 dark:text-emerald-400",
+  MEDIUM: "text-amber-600 dark:text-amber-400",
+  LOW: "text-orange-600 dark:text-orange-400",
+  UNAVAILABLE: "text-zinc-400 dark:text-zinc-600",
+};
+
+export default async function RoiLeaderboardPage() {
+  const [{ data: politicians }, { data: trades }, { data: returns }] =
+    await Promise.all([
+      supabase.from("politicians").select("*").returns<Politician[]>(),
+      supabase.from("trades").select("*").returns<Trade[]>(),
+      supabase.from("trade_returns").select("*").returns<TradeReturn[]>(),
+    ]);
+
+  const returnByTradeId = new Map((returns ?? []).map((r) => [r.trade_id, r]));
+
+  type Agg = {
+    weightedReturnSum: number;
+    weightedValue: number;
+    pricedTrades: number;
+    totalTrades: number;
+    estimatedGainLoss: number;
+  };
+
+  const byPolitician = new Map<string, Agg>();
+
+  for (const t of trades ?? []) {
+    const agg = byPolitician.get(t.politician_id) ?? {
+      weightedReturnSum: 0,
+      weightedValue: 0,
+      pricedTrades: 0,
+      totalTrades: 0,
+      estimatedGainLoss: 0,
+    };
+    agg.totalTrades += 1;
+
+    const r = returnByTradeId.get(t.id);
+    const value = estimatedTradeValue(t) ?? 0;
+    if (r && r.return_pct !== null && r.confidence !== "UNAVAILABLE") {
+      agg.weightedReturnSum += r.return_pct * value;
+      agg.weightedValue += value;
+      agg.pricedTrades += 1;
+      agg.estimatedGainLoss += r.return_pct * value;
+    }
+
+    byPolitician.set(t.politician_id, agg);
+  }
+
+  const rows = (politicians ?? [])
+    .map((p) => ({ politician: p, agg: byPolitician.get(p.id) }))
+    .filter((r) => r.agg && r.agg.pricedTrades > 0)
+    .map((r) => ({
+      ...r,
+      roi: r.agg!.weightedValue > 0 ? r.agg!.weightedReturnSum / r.agg!.weightedValue : 0,
+      coverage: r.agg!.pricedTrades / r.agg!.totalTrades,
+    }))
+    .sort((a, b) => b.roi - a.roi);
+
+  const noPriceDataYet = (returns ?? []).length === 0;
+
+  return (
+    <div className="flex flex-1 flex-col bg-white px-6 py-16 dark:bg-black">
+      <div className="mx-auto w-full max-w-3xl">
+        <div className="flex items-center justify-between">
+          <Link
+            href="/"
+            className="text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+          >
+            &larr; Back to all politicians
+          </Link>
+          <Link
+            href="/leaderboard"
+            className="text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+          >
+            Most Active Traders &rarr;
+          </Link>
+        </div>
+
+        <h1 className="mt-4 text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+          Estimated ROI Leaderboard
+        </h1>
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
+          For each trade, we compare the stock&apos;s price on the trade date to
+          its most recent available price. For purchases, a rising price is a
+          gain; for sales, a falling price afterward counts as a gain (good
+          timing). Each politician&apos;s score is a dollar-weighted average
+          across their priced trades, using the disclosed amount-range
+          midpoint as position size.{" "}
+          <strong className="text-zinc-700 dark:text-zinc-300">
+            These are estimates, not exact figures
+          </strong>{" "}
+          — STOCK Act filings never disclose exact share counts or exact
+          dollar amounts.
+        </p>
+
+        {noPriceDataYet && (
+          <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
+            No price data has been synced yet, so ROI can&apos;t be estimated.
+          </div>
+        )}
+
+        {!noPriceDataYet && rows.length === 0 && (
+          <div className="mt-6 rounded-xl border border-zinc-200 p-4 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+            No politicians have enough priced trades yet.
+          </div>
+        )}
+
+        <div className="mt-8 overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-zinc-50 text-xs uppercase text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
+              <tr>
+                <th className="px-4 py-2 font-medium">#</th>
+                <th className="px-4 py-2 font-medium">Politician</th>
+                <th className="px-4 py-2 font-medium">Est. ROI</th>
+                <th className="px-4 py-2 font-medium">Est. gain/loss</th>
+                <th className="px-4 py-2 font-medium">Data coverage</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, i) => (
+                <tr
+                  key={row.politician.id}
+                  className="border-t border-zinc-100 dark:border-zinc-900"
+                >
+                  <td className="px-4 py-2 text-zinc-400">{i + 1}</td>
+                  <td className="px-4 py-2 font-medium text-zinc-900 dark:text-zinc-50">
+                    <Link
+                      href={`/politicians/${row.politician.id}`}
+                      className="hover:underline"
+                    >
+                      {row.politician.full_name}
+                    </Link>
+                    <span className="ml-2 text-xs font-normal text-zinc-500 dark:text-zinc-400">
+                      {titleCase(row.politician.party)} &middot; {row.politician.state}
+                    </span>
+                  </td>
+                  <td
+                    className={`px-4 py-2 font-semibold ${
+                      row.roi >= 0
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-red-600 dark:text-red-400"
+                    }`}
+                  >
+                    {formatPct(row.roi)}
+                  </td>
+                  <td className="px-4 py-2 text-zinc-600 dark:text-zinc-300">
+                    {row.agg!.estimatedGainLoss >= 0 ? "+" : "-"}$
+                    {Math.abs(row.agg!.estimatedGainLoss).toLocaleString("en-US", {
+                      maximumFractionDigits: 0,
+                    })}
+                  </td>
+                  <td className="px-4 py-2 text-zinc-500 dark:text-zinc-400">
+                    {row.agg!.pricedTrades}/{row.agg!.totalTrades} trades priced (
+                    {(row.coverage * 100).toFixed(0)}%)
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <p className="mt-4 text-xs text-zinc-400 dark:text-zinc-500">
+          Confidence key:{" "}
+          <span className={confidenceStyle.HIGH}>High</span> = price matched
+          within 3 days of the trade and current price is fresh.{" "}
+          <span className={confidenceStyle.MEDIUM}>Medium</span> = matched
+          within 10 days.{" "}
+          <span className={confidenceStyle.LOW}>Low</span> = wider gap, treat
+          with caution. Trades on delisted or unmatched tickers are excluded
+          from these totals rather than guessed at.
+        </p>
+      </div>
+    </div>
+  );
+}

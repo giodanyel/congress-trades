@@ -37,12 +37,20 @@ export default async function Home() {
           <span className="inline-block rounded-full border border-zinc-200 px-3 py-1 text-xs font-medium tracking-wide text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
             PHASE 3 &middot; REAL TRADE DATA
           </span>
-          <Link
-            href="/leaderboard"
-            className="text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
-          >
-            Most Active Traders &rarr;
-          </Link>
+          <div className="flex gap-4">
+            <Link
+              href="/leaderboard/roi"
+              className="text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+            >
+              Estimated ROI &rarr;
+            </Link>
+            <Link
+              href="/leaderboard"
+              className="text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+            >
+              Most Active &rarr;
+            </Link>
+          </div>
         </div>
         <h1 className="mt-4 text-4xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
           Congress Trades

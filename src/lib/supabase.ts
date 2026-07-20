@@ -64,3 +64,16 @@ export function estimatedTradeValue(t: Pick<Trade, "amount_min" | "amount_max">)
   if (t.amount_min === null || t.amount_max === null) return null;
   return (t.amount_min + t.amount_max) / 2;
 }
+
+export type ReturnConfidence = "HIGH" | "MEDIUM" | "LOW" | "UNAVAILABLE";
+
+export type TradeReturn = {
+  trade_id: string;
+  price_at_trade: number | null;
+  price_at_trade_date: string | null;
+  price_latest: number | null;
+  price_latest_date: string | null;
+  return_pct: number | null;
+  confidence: ReturnConfidence;
+  computed_at: string;
+};

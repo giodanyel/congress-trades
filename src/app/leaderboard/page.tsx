@@ -59,12 +59,20 @@ export default async function LeaderboardPage() {
   return (
     <div className="flex flex-1 flex-col bg-white px-6 py-16 dark:bg-black">
       <div className="mx-auto w-full max-w-3xl">
-        <Link
-          href="/"
-          className="text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
-        >
-          &larr; Back to all politicians
-        </Link>
+        <div className="flex items-center justify-between">
+          <Link
+            href="/"
+            className="text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+          >
+            &larr; Back to all politicians
+          </Link>
+          <Link
+            href="/leaderboard/roi"
+            className="text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+          >
+            Estimated ROI Leaderboard &rarr;
+          </Link>
+        </div>
 
         <h1 className="mt-4 text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
           Most Active Traders
@@ -76,7 +84,11 @@ export default async function LeaderboardPage() {
           <strong className="text-zinc-700 dark:text-zinc-300">
             This is not a return-on-investment (ROI) ranking.
           </strong>{" "}
-          A true ROI leaderboard requires historical stock price data at each
+          See the{" "}
+          <Link href="/leaderboard/roi" className="underline">
+            Estimated ROI Leaderboard
+          </Link>{" "}
+          for that. A true ROI leaderboard requires historical stock price data at each
           trade date, which is planned for a future update and will be clearly
           labeled with a confidence score once added.
         </p>
