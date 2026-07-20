@@ -1,6 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import seed from "@/data/congress-trades-seed.json";
+import seedRaw from "@/data/congress-trades-seed.json";
+
+// Typed loosely on purpose: letting TypeScript infer literal types across
+// ~650 bundled JSON records makes the type checker very slow. A plain
+// interface cast keeps `next build` fast.
+type SeedPolitician = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  party: string;
+  state: string;
+  chamber: string;
+  photo_url: string | null;
+  office: string | null;
+};
+type SeedStock = { ticker: string; company_name: string };
+type SeedTrade = {
+  filer_id: string;
+  ticker: string;
+  trade_type: string;
+  owner: string;
+  transaction_date: string;
+  amount_min: number | null;
+  amount_max: number | null;
+  amount_label: string | null;
+  source_url: string | null;
+};
+type Seed = {
+  politicians: SeedPolitician[];
+  stocks: SeedStock[];
+  trades: SeedTrade[];
+  source: string;
+};
+
+const seed = seedRaw as unknown as Seed;
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;

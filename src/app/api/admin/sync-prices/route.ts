@@ -58,6 +58,7 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = getSupabaseAdmin();
+  const force = req.nextUrl.searchParams.get("force") === "1";
 
   const { data: stocks, error: stocksError } = await supabase
     .from("stocks")
@@ -67,17 +68,33 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: stocksError.message }, { status: 500 });
   }
 
+  let tickersToSync = (stocks ?? []).map((s) => s.ticker as string);
+
+  if (!force) {
+    // Skip tickers we already have at least one price row for, so repeated
+    // calls make forward progress instead of redoing completed work. This
+    // matters because we can only fetch a limited number of tickers per
+    // invocation before the serverless function's time limit.
+    const { data: already } = await supabase.from("stock_prices").select("ticker");
+    const doneSet = new Set((already ?? []).map((r) => r.ticker as string));
+    tickersToSync = tickersToSync.filter((t) => !doneSet.has(t));
+  }
+
+  // Cap per-invocation work and run with limited concurrency so we make
+  // steady progress within the function's time budget across repeated calls.
+  const BATCH_LIMIT = 60;
+  const CONCURRENCY = 8;
+  const batch = tickersToSync.slice(0, BATCH_LIMIT);
+
   const results: Record<string, { rows: number; error?: string }> = {};
 
-  for (const stock of stocks ?? []) {
-    const ticker = stock.ticker as string;
+  async function syncOne(ticker: string) {
     try {
       const rows = await fetchTickerPrices(ticker);
       if (rows.length === 0) {
         results[ticker] = { rows: 0, error: "No price rows returned" };
-        continue;
+        return;
       }
-      // Upsert in chunks to stay well under request size limits.
       const chunkSize = 500;
       for (let i = 0; i < rows.length; i += chunkSize) {
         const chunk = rows.slice(i, i + chunkSize);
@@ -95,11 +112,19 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  for (let i = 0; i < batch.length; i += CONCURRENCY) {
+    const slice = batch.slice(i, i + CONCURRENCY);
+    await Promise.all(slice.map(syncOne));
+  }
+
   const succeeded = Object.values(results).filter((r) => !r.error).length;
   const failed = Object.values(results).filter((r) => r.error).length;
 
   return NextResponse.json({
-    tickersProcessed: stocks?.length ?? 0,
+    totalTickers: stocks?.length ?? 0,
+    remainingBeforeThisRun: tickersToSync.length,
+    processedThisRun: batch.length,
+    stillRemaining: tickersToSync.length - batch.length,
     succeeded,
     failed,
     results,
