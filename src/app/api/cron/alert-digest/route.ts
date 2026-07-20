@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { sendEmail } from "@/lib/email";
+import { isAdminAuthorized } from "@/lib/adminAuth";
 import { aggregateByPolitician, roiOf, isActive } from "@/lib/analytics";
 import {
   estimatedTradeValue,
@@ -17,20 +18,6 @@ const ALERT_RECIPIENT = "giovandererve@gmail.com";
 // count as "top performers" for alerting purposes. Matches the homepage's
 // "Top Performers, Currently Active" list.
 const TOP_PERFORMER_LIMIT = 10;
-
-function isAuthorized(req: NextRequest) {
-  const secret = req.nextUrl.searchParams.get("secret");
-  if (secret && process.env.ADMIN_SYNC_SECRET && secret === process.env.ADMIN_SYNC_SECRET) {
-    return true;
-  }
-  // Vercel Cron automatically sends this header when a CRON_SECRET env var
-  // is configured, so scheduled runs don't need the secret in vercel.json.
-  const auth = req.headers.get("authorization");
-  if (auth && process.env.CRON_SECRET && auth === `Bearer ${process.env.CRON_SECRET}`) {
-    return true;
-  }
-  return false;
-}
 
 function titleCase(s: string) {
   return s.charAt(0) + s.slice(1).toLowerCase();
@@ -67,7 +54,7 @@ function buildDigestHtml(
 }
 
 export async function GET(req: NextRequest) {
-  if (!isAuthorized(req)) {
+  if (!isAdminAuthorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

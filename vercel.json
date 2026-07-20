@@ -1,8 +1,20 @@
 {
   "crons": [
     {
-      "path": "/api/cron/alert-digest",
+      "path": "/api/cron/sync-new-trades",
       "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/admin/sync-prices",
+      "schedule": "15 13 * * *"
+    },
+    {
+      "path": "/api/admin/compute-roi",
+      "schedule": "30 13 * * *"
+    },
+    {
+      "path": "/api/cron/alert-digest",
+      "schedule": "45 13 * * *"
     }
   ]
 }
