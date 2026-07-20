@@ -59,6 +59,11 @@ export async function GET(req: NextRequest) {
 
   const supabase = getSupabaseAdmin();
   const force = req.nextUrl.searchParams.get("force") === "1";
+  // Optional comma-separated override to sync specific tickers right away
+  // (e.g. ?tickers=SPY) instead of waiting for them to come up in normal
+  // batch order -- useful for a newly-added ticker like the S&P 500
+  // benchmark that everything else depends on.
+  const tickersParam = req.nextUrl.searchParams.get("tickers");
 
   const { data: stocks, error: stocksError } = await supabase
     .from("stocks")
@@ -70,7 +75,10 @@ export async function GET(req: NextRequest) {
 
   let tickersToSync = (stocks ?? []).map((s) => s.ticker as string);
 
-  if (!force) {
+  if (tickersParam) {
+    const requested = new Set(tickersParam.split(",").map((t) => t.trim()).filter(Boolean));
+    tickersToSync = tickersToSync.filter((t) => requested.has(t));
+  } else if (!force) {
     // Skip tickers we already have at least one price row for, so repeated
     // calls make forward progress instead of redoing completed work. This
     // matters because we can only fetch a limited number of tickers per

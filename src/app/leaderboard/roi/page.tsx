@@ -1,12 +1,12 @@
 import Link from "next/link";
 import {
   supabase,
-  estimatedTradeValue,
   type Politician,
   type Trade,
   type TradeReturn,
 } from "@/lib/supabase";
 import { formatPct, partyStyle, confidenceStyle } from "@/lib/ui";
+import { aggregateByPolitician, roiOf, alphaOf } from "@/lib/analytics";
 
 export const dynamic = "force-dynamic";
 
@@ -19,45 +19,15 @@ export default async function RoiLeaderboardPage() {
     ]);
 
   const returnByTradeId = new Map((returns ?? []).map((r) => [r.trade_id, r]));
-
-  type Agg = {
-    weightedReturnSum: number;
-    weightedValue: number;
-    pricedTrades: number;
-    totalTrades: number;
-    estimatedGainLoss: number;
-  };
-
-  const byPolitician = new Map<string, Agg>();
-
-  for (const t of trades ?? []) {
-    const agg = byPolitician.get(t.politician_id) ?? {
-      weightedReturnSum: 0,
-      weightedValue: 0,
-      pricedTrades: 0,
-      totalTrades: 0,
-      estimatedGainLoss: 0,
-    };
-    agg.totalTrades += 1;
-
-    const r = returnByTradeId.get(t.id);
-    const value = estimatedTradeValue(t) ?? 0;
-    if (r && r.return_pct !== null && r.confidence !== "UNAVAILABLE") {
-      agg.weightedReturnSum += r.return_pct * value;
-      agg.weightedValue += value;
-      agg.pricedTrades += 1;
-      agg.estimatedGainLoss += r.return_pct * value;
-    }
-
-    byPolitician.set(t.politician_id, agg);
-  }
+  const byPolitician = aggregateByPolitician(trades ?? [], returnByTradeId);
 
   const rows = (politicians ?? [])
     .map((p) => ({ politician: p, agg: byPolitician.get(p.id) }))
     .filter((r) => r.agg && r.agg.pricedTrades > 0)
     .map((r) => ({
       ...r,
-      roi: r.agg!.weightedValue > 0 ? r.agg!.weightedReturnSum / r.agg!.weightedValue : 0,
+      roi: roiOf(r.agg!),
+      alpha: alphaOf(r.agg!),
       coverage: r.agg!.pricedTrades / r.agg!.totalTrades,
     }))
     .sort((a, b) => b.roi - a.roi);
@@ -109,6 +79,7 @@ export default async function RoiLeaderboardPage() {
                 <th className="px-4 py-2 font-medium">#</th>
                 <th className="px-4 py-2 font-medium">Politician</th>
                 <th className="px-4 py-2 font-medium">Est. ROI</th>
+                <th className="px-4 py-2 font-medium">vs S&amp;P 500</th>
                 <th className="px-4 py-2 font-medium">Est. gain/loss</th>
                 <th className="px-4 py-2 font-medium">Data coverage</th>
               </tr>
@@ -144,6 +115,22 @@ export default async function RoiLeaderboardPage() {
                     >
                       {formatPct(row.roi)}
                     </td>
+                    <td className="px-4 py-2">
+                      {row.alpha === null ? (
+                        <span className="text-zinc-400 dark:text-zinc-600">—</span>
+                      ) : (
+                        <span
+                          className={
+                            row.alpha >= 0
+                              ? "text-emerald-600 dark:text-emerald-400"
+                              : "text-red-600 dark:text-red-400"
+                          }
+                        >
+                          {row.alpha >= 0 ? "+" : ""}
+                          {(row.alpha * 100).toFixed(1)} pts
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-2 text-zinc-600 dark:text-zinc-300">
                       {row.agg!.estimatedGainLoss >= 0 ? "+" : "-"}$
                       {Math.abs(row.agg!.estimatedGainLoss).toLocaleString("en-US", {
@@ -169,7 +156,11 @@ export default async function RoiLeaderboardPage() {
           within 10 days.{" "}
           <span className={confidenceStyle.LOW}>Low</span> = wider gap, treat
           with caution. Trades on delisted or unmatched tickers are excluded
-          from these totals rather than guessed at.
+          from these totals rather than guessed at. &ldquo;vs S&amp;P 500&rdquo; is
+          the estimated ROI minus what a plain S&amp;P 500 (SPY) position would
+          have returned over the same trade-to-latest window &mdash; positive
+          means they outperformed just holding the index, not that the trade
+          itself was large or certain.
         </p>
       </div>
     </div>

@@ -8,15 +8,14 @@ import {
   type TradeReturn,
 } from "@/lib/supabase";
 import { partyStyle, formatUsd, formatPct, relativeDate, titleCase } from "@/lib/ui";
+import { aggregateByPolitician, roiOf, alphaOf, ACTIVE_WINDOW_DAYS } from "@/lib/analytics";
+import { sectorForTicker } from "@/lib/sectors";
+import { committeeConflicts } from "@/lib/committees";
 
 // Data changes as new trades/politicians are added, so always fetch fresh
 // instead of baking a snapshot in at build time.
 export const dynamic = "force-dynamic";
 
-// "Active" window for the homepage: a politician only counts as a current
-// top performer if they've actually traded recently. A great historical ROI
-// from a member who hasn't traded in years isn't useful "current" signal.
-const ACTIVE_WINDOW_DAYS = 120;
 const RECENT_BUYS_LIMIT = 12;
 const TOP_PERFORMERS_LIMIT = 8;
 
@@ -36,40 +35,9 @@ export default async function Home() {
   const now = Date.now();
   const cutoff = now - ACTIVE_WINDOW_DAYS * 24 * 60 * 60 * 1000;
 
-  // Aggregate per-politician ROI + last trade date in one pass.
-  type Agg = {
-    weightedReturnSum: number;
-    weightedValue: number;
-    pricedTrades: number;
-    totalTrades: number;
-    estimatedGainLoss: number;
-    lastTradeDate: string;
-  };
-  const byPolitician = new Map<string, Agg>();
-
-  for (const t of trades ?? []) {
-    const agg = byPolitician.get(t.politician_id) ?? {
-      weightedReturnSum: 0,
-      weightedValue: 0,
-      pricedTrades: 0,
-      totalTrades: 0,
-      estimatedGainLoss: 0,
-      lastTradeDate: t.transaction_date,
-    };
-    agg.totalTrades += 1;
-    if (t.transaction_date > agg.lastTradeDate) agg.lastTradeDate = t.transaction_date;
-
-    const r = returnByTradeId.get(t.id);
-    const value = estimatedTradeValue(t) ?? 0;
-    if (r && r.return_pct !== null && r.confidence !== "UNAVAILABLE") {
-      agg.weightedReturnSum += r.return_pct * value;
-      agg.weightedValue += value;
-      agg.pricedTrades += 1;
-      agg.estimatedGainLoss += r.return_pct * value;
-    }
-
-    byPolitician.set(t.politician_id, agg);
-  }
+  // Aggregate per-politician ROI + last trade date in one pass, shared with
+  // the ROI leaderboard and Interesting Buys so the numbers always agree.
+  const byPolitician = aggregateByPolitician(trades ?? [], returnByTradeId);
 
   const topPerformers = [...byPolitician.entries()]
     .map(([politicianId, agg]) => ({ politician: politicianById.get(politicianId), agg }))
@@ -82,7 +50,8 @@ export default async function Home() {
     .map((r) => ({
       politician: r.politician!,
       agg: r.agg,
-      roi: r.agg.weightedValue > 0 ? r.agg.weightedReturnSum / r.agg.weightedValue : 0,
+      roi: roiOf(r.agg),
+      alpha: alphaOf(r.agg),
     }))
     .sort((a, b) => b.roi - a.roi)
     .slice(0, TOP_PERFORMERS_LIMIT);
@@ -170,6 +139,16 @@ export default async function Home() {
                 <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
                   {style.label} &middot; {row.politician.state} &middot; last trade{" "}
                   {relativeDate(row.agg.lastTradeDate)}
+                  {row.alpha !== null && (
+                    <>
+                      {" "}
+                      &middot;{" "}
+                      <span className={row.alpha >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}>
+                        {row.alpha >= 0 ? "+" : ""}
+                        {(row.alpha * 100).toFixed(0)} pts vs S&amp;P 500
+                      </span>
+                    </>
+                  )}
                 </p>
               </Link>
             );
@@ -200,6 +179,7 @@ export default async function Home() {
             const p = politicianById.get(t.politician_id);
             const stock = stockByTicker.get(t.ticker);
             const style = p ? partyStyle(p.party) : null;
+            const conflicts = p ? committeeConflicts(p.id, sectorForTicker(t.ticker)) : [];
             return (
               <li key={t.id} className="flex items-center justify-between gap-4 px-4 py-3">
                 <div className="flex min-w-0 items-center gap-3">
@@ -217,6 +197,14 @@ export default async function Home() {
                       <Link href={`/stocks/${t.ticker}`} className="hover:underline">
                         {t.ticker}
                       </Link>
+                      {conflicts.length > 0 && (
+                        <span
+                          title={`Sits on ${conflicts[0].committee}, which has jurisdiction over ${conflicts[0].sector}`}
+                          className="ml-1.5 rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                        >
+                          committee overlap
+                        </span>
+                      )}
                     </p>
                     <p className="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400">
                       {stock?.company_name ?? t.ticker} &middot; {relativeDate(t.transaction_date)}

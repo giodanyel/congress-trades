@@ -8,6 +8,8 @@ import {
 } from "@/lib/supabase";
 import { partyStyle, relativeDate, titleCase } from "@/lib/ui";
 import { aggregateByPolitician, roiOf, isActive, sizeTier } from "@/lib/analytics";
+import { committeeConflicts } from "@/lib/committees";
+import { sectorForTicker } from "@/lib/sectors";
 
 export const dynamic = "force-dynamic";
 
@@ -81,6 +83,16 @@ export default async function InterestingBuysPage() {
       }
     }
 
+    // Committee conflict-of-interest signal: does this politician sit on a
+    // committee with direct jurisdiction over the sector this stock is in?
+    const conflicts = committeeConflicts(p.id, sectorForTicker(t.ticker));
+    if (conflicts.length > 0) {
+      flags.push({
+        label: `Sits on ${conflicts[0].committee}, which oversees ${conflicts[0].sector}`,
+        weight: 3,
+      });
+    }
+
     if (flags.length === 0) continue;
 
     const score = flags.reduce((s, f) => s + f.weight, 0);
@@ -98,9 +110,13 @@ export default async function InterestingBuysPage() {
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
           Purchases from the last {RECENT_DAYS} days worth a second look: unusually
           large disclosed amounts, tickers multiple members bought around the
-          same time, or buys from politicians currently outperforming on their
-          priced trades. This is a screen to help you look further, not
-          investment advice.
+          same time, buys from politicians currently outperforming on their
+          priced trades, or buys in a sector overseen by a committee the
+          politician sits on. This is a screen to help you look further, not
+          investment advice. The committee overlap flag uses a curated,{" "}
+          <span className="italic">non-exhaustive</span> reference of
+          committees and sectors &mdash; its absence doesn&apos;t mean there&apos;s no
+          overlap, only that this screen didn&apos;t catch one.
         </p>
 
         {rows.length === 0 && (

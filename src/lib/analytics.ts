@@ -3,6 +3,11 @@ import { estimatedTradeValue, type Trade, type TradeReturn } from "@/lib/supabas
 export type PoliticianAgg = {
   weightedReturnSum: number;
   weightedValue: number;
+  // Same value-weighting as weightedReturnSum, but for (return - S&P 500
+  // return over the same window) on each trade -- lets alphaOf() report
+  // "average outperformance vs. just holding the market" consistently.
+  weightedAlphaSum: number;
+  weightedAlphaValue: number;
   pricedTrades: number;
   totalTrades: number;
   estimatedGainLoss: number;
@@ -21,6 +26,8 @@ export function aggregateByPolitician(
     const agg = byPolitician.get(t.politician_id) ?? {
       weightedReturnSum: 0,
       weightedValue: 0,
+      weightedAlphaSum: 0,
+      weightedAlphaValue: 0,
       pricedTrades: 0,
       totalTrades: 0,
       estimatedGainLoss: 0,
@@ -37,6 +44,10 @@ export function aggregateByPolitician(
       agg.pricedTrades += 1;
       agg.estimatedGainLoss += r.return_pct * value;
     }
+    if (r && r.alpha_pct !== null && r.confidence !== "UNAVAILABLE") {
+      agg.weightedAlphaSum += r.alpha_pct * value;
+      agg.weightedAlphaValue += value;
+    }
 
     byPolitician.set(t.politician_id, agg);
   }
@@ -46,6 +57,14 @@ export function aggregateByPolitician(
 
 export function roiOf(agg: PoliticianAgg): number {
   return agg.weightedValue > 0 ? agg.weightedReturnSum / agg.weightedValue : 0;
+}
+
+// Average outperformance vs. simply holding the S&P 500 over the same
+// windows, value-weighted the same way as roiOf(). Null when no trade has
+// alpha data yet (still backfilling, or all trades are on the benchmark
+// itself).
+export function alphaOf(agg: PoliticianAgg): number | null {
+  return agg.weightedAlphaValue > 0 ? agg.weightedAlphaSum / agg.weightedAlphaValue : null;
 }
 
 export const ACTIVE_WINDOW_DAYS = 120;

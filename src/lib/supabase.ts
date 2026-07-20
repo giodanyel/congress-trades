@@ -81,6 +81,11 @@ export type TradeReturn = {
   // not a recommendation either way.
   pre_disclosure_move_pct: number | null;
   return_pct: number | null;
+  // What the S&P 500 (SPY) did over the same trade-date-to-latest window,
+  // and the trade's return minus that benchmark ("alpha"). Gives ROI
+  // numbers an actual baseline instead of floating in isolation.
+  spy_return_pct: number | null;
+  alpha_pct: number | null;
   confidence: ReturnConfidence;
   computed_at: string;
 };

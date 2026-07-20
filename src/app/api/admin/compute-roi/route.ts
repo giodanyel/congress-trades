@@ -89,7 +89,10 @@ type ExistingReturnRow = {
   trade_id: string;
   confidence: string;
   pre_disclosure_move_pct: number | null;
+  alpha_pct: number | null;
 };
+
+const BENCHMARK_TICKER = "SPY";
 
 export async function GET(req: NextRequest) {
   if (!isAdminAuthorized(req)) {
@@ -103,7 +106,7 @@ export async function GET(req: NextRequest) {
   try {
     [trades, existingReturns] = await Promise.all([
       fetchAllRows<TradeRow>(supabase, "trades", "id, ticker, trade_type, transaction_date, filing_date"),
-      fetchAllRows<ExistingReturnRow>(supabase, "trade_returns", "trade_id, confidence, pre_disclosure_move_pct"),
+      fetchAllRows<ExistingReturnRow>(supabase, "trade_returns", "trade_id, confidence, pre_disclosure_move_pct, alpha_pct"),
     ]);
   } catch (err) {
     return NextResponse.json(
@@ -151,6 +154,9 @@ export async function GET(req: NextRequest) {
       if (!existing) return true;
       if (existing.confidence === "UNAVAILABLE") return true;
       if (t.filing_date && existing.pre_disclosure_move_pct === null) return true;
+      // Added after the first computation pass -- worth one backfill retry
+      // for trades that already priced fine otherwise.
+      if (existing.alpha_pct === null) return true;
       return false;
     })
     // Most recent trades first -- these are the ones feeding "Interesting
@@ -164,6 +170,18 @@ export async function GET(req: NextRequest) {
 
   const latestCache = new Map<string, { price_date: string; close_price: number } | null>();
   const today = new Date().toISOString().slice(0, 10);
+
+  // S&P 500 (SPY) is the benchmark for every trade regardless of ticker, so
+  // its "latest" price is fetched once, and its price-on-a-given-date is
+  // cached by date since many trades share transaction dates.
+  const spyLatest = await latestPrice(supabase, BENCHMARK_TICKER);
+  const spyAtDateCache = new Map<string, { price_date: string; close_price: number } | null>();
+  async function spyPriceOnOrBefore(date: string) {
+    if (!spyAtDateCache.has(date)) {
+      spyAtDateCache.set(date, await nearestPriceOnOrBefore(supabase, BENCHMARK_TICKER, date));
+    }
+    return spyAtDateCache.get(date) ?? null;
+  }
 
   const results: Record<string, string> = {};
   let computed = 0;
@@ -221,6 +239,21 @@ export async function GET(req: NextRequest) {
         }
       }
 
+      // Benchmark: what a plain S&P 500 position would have returned over
+      // the identical trade-date-to-latest window. "Alpha" is the trade's
+      // own directional return minus that baseline -- skipped (left null)
+      // for SPY itself and for trades on the ticker's own transaction date
+      // when SPY has no price data that far back.
+      let spyReturnPct: number | null = null;
+      let alphaPct: number | null = null;
+      if (trade.ticker !== BENCHMARK_TICKER && spyLatest) {
+        const spyAtTrade = await spyPriceOnOrBefore(trade.transaction_date);
+        if (spyAtTrade) {
+          spyReturnPct = (spyLatest.close_price - spyAtTrade.close_price) / spyAtTrade.close_price;
+          alphaPct = returnPct - spyReturnPct;
+        }
+      }
+
       await supabase.from("trade_returns").upsert({
         trade_id: trade.id,
         price_at_trade: tradePrice.close_price,
@@ -231,6 +264,8 @@ export async function GET(req: NextRequest) {
         price_at_filing_date: priceAtFiling?.price_date ?? null,
         pre_disclosure_move_pct: preDisclosureMovePct,
         return_pct: returnPct,
+        spy_return_pct: spyReturnPct,
+        alpha_pct: alphaPct,
         confidence,
       });
       results[trade.id] = `ok (${confidence})`;

@@ -9,6 +9,9 @@ import {
   type TradeReturn,
 } from "@/lib/supabase";
 import { formatUsd, partyStyle, titleCase } from "@/lib/ui";
+import { PerformanceChart, type ChartPoint } from "@/components/PerformanceChart";
+import { committeesFor, committeeConflicts } from "@/lib/committees";
+import { sectorForTicker } from "@/lib/sectors";
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +62,33 @@ export default async function PoliticianPage({
   );
 
   const style = partyStyle(politician.party);
+  const committees = committeesFor(politician.id);
+
+  // Cumulative P&L over time, chronological, for the performance chart --
+  // both the actual estimated $ return on each priced trade and what an
+  // equal-sized S&P 500 position would have returned instead.
+  const chronological = [...(trades ?? [])].sort((a, b) =>
+    a.transaction_date.localeCompare(b.transaction_date)
+  );
+  let runningPnl = 0;
+  let runningSpyPnl = 0;
+  let sawSpy = false;
+  const chartPoints: ChartPoint[] = [];
+  for (const t of chronological) {
+    const r = returnByTradeId.get(t.id);
+    if (!r || r.return_pct === null || r.confidence === "UNAVAILABLE") continue;
+    const value = estimatedTradeValue(t) ?? 0;
+    runningPnl += r.return_pct * value;
+    if (r.spy_return_pct !== null) {
+      runningSpyPnl += r.spy_return_pct * value;
+      sawSpy = true;
+    }
+    chartPoints.push({
+      date: t.transaction_date,
+      cumPnl: runningPnl,
+      cumSpyPnl: sawSpy ? runningSpyPnl : null,
+    });
+  }
 
   return (
     <div className="flex flex-1 flex-col bg-white px-6 py-10 dark:bg-black">
@@ -79,6 +109,19 @@ export default async function PoliticianPage({
           <p className="mt-4 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
             {politician.bio}
           </p>
+        )}
+
+        {committees.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {committees.map((c) => (
+              <span
+                key={c}
+                className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400"
+              >
+                {c}
+              </span>
+            ))}
+          </div>
         )}
 
         <div className="mt-8 grid grid-cols-3 gap-3">
@@ -105,6 +148,11 @@ export default async function PoliticianPage({
         </div>
 
         <h2 className="mt-10 mb-4 text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          Cumulative estimated P&amp;L vs S&amp;P 500
+        </h2>
+        <PerformanceChart points={chartPoints} />
+
+        <h2 className="mt-10 mb-4 text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
           Trade history
         </h2>
 
@@ -118,6 +166,7 @@ export default async function PoliticianPage({
                 <th className="px-4 py-2 font-medium">Owner</th>
                 <th className="px-4 py-2 font-medium">Amount range</th>
                 <th className="px-4 py-2 font-medium">Est. P&amp;L*</th>
+                <th className="px-4 py-2 font-medium">vs S&amp;P 500</th>
               </tr>
             </thead>
             <tbody>
@@ -126,6 +175,7 @@ export default async function PoliticianPage({
                 const value = estimatedTradeValue(t);
                 const pnl =
                   r && r.return_pct !== null && value !== null ? r.return_pct * value : null;
+                const conflicts = committeeConflicts(politician.id, sectorForTicker(t.ticker));
                 return (
                   <tr
                     key={t.id}
@@ -141,6 +191,14 @@ export default async function PoliticianPage({
                       <span className="ml-1 text-xs font-normal text-zinc-500 dark:text-zinc-400">
                         {stockByTicker.get(t.ticker)?.company_name}
                       </span>
+                      {conflicts.length > 0 && (
+                        <span
+                          title={conflicts.map((c) => `${c.committee} oversees ${c.sector}`).join("; ")}
+                          className="ml-1.5 rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                        >
+                          committee overlap
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-2">
                       <span
@@ -178,6 +236,22 @@ export default async function PoliticianPage({
                           <span className="ml-1 text-xs text-zinc-400">
                             ({r!.confidence.toLowerCase()})
                           </span>
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2">
+                      {r?.alpha_pct == null ? (
+                        <span className="text-zinc-400 dark:text-zinc-600">—</span>
+                      ) : (
+                        <span
+                          className={
+                            r.alpha_pct >= 0
+                              ? "text-emerald-600 dark:text-emerald-400"
+                              : "text-red-600 dark:text-red-400"
+                          }
+                        >
+                          {r.alpha_pct >= 0 ? "+" : ""}
+                          {(r.alpha_pct * 100).toFixed(1)} pts
                         </span>
                       )}
                     </td>
