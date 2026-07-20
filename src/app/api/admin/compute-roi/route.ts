@@ -118,13 +118,18 @@ export async function GET(req: NextRequest) {
   // Retry ones marked UNAVAILABLE (price data may have shown up since) and
   // ones missing pre_disclosure_move_pct despite having a filing_date
   // (added after the first computation pass, worth backfilling once).
-  const needsCompute = trades.filter((t) => {
-    const existing = existingByTradeId.get(t.id);
-    if (!existing) return true;
-    if (existing.confidence === "UNAVAILABLE") return true;
-    if (t.filing_date && existing.pre_disclosure_move_pct === null) return true;
-    return false;
-  });
+  const needsCompute = trades
+    .filter((t) => {
+      const existing = existingByTradeId.get(t.id);
+      if (!existing) return true;
+      if (existing.confidence === "UNAVAILABLE") return true;
+      if (t.filing_date && existing.pre_disclosure_move_pct === null) return true;
+      return false;
+    })
+    // Most recent trades first -- these are the ones feeding "Interesting
+    // Buys" and the alert digest, so with a batch-limited run they should
+    // never be stuck behind a backlog of old, already-stale trades.
+    .sort((a, b) => b.transaction_date.localeCompare(a.transaction_date));
 
   const BATCH_LIMIT = 500;
   const CONCURRENCY = 15;
