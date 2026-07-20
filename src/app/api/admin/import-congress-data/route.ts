@@ -18,7 +18,7 @@ type SeedPolitician = {
 };
 type SeedStock = { ticker: string; company_name: string };
 type SeedTrade = {
-  filer_id: string;
+  politician_id: string;
   ticker: string;
   trade_type: string;
   owner: string;
@@ -41,10 +41,12 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 // Replaces all politicians/stocks/trades with the bundled seed dataset.
-// Source: kadoa-org/congress-trading-monitor (MIT licensed), which
-// aggregates official STOCK Act disclosures from the House Clerk, Senate
-// eFD, and OGE. We only bundle members with at least one trade disclosed
-// since 2025-01-01, so only currently active traders are included.
+// Roster: unitedstates/congress-legislators (current, MIT) -- the full
+// 537-member sitting House + Senate, so no retired/former members appear.
+// Trades: kadoa-org/congress-trading-monitor (2025-2026, House + Senate)
+// combined with senate-stock-watcher-data (2012-2021, Senate only, filtered
+// to members still currently serving). There's a real gap between
+// 2021-2024 where no free historical source was available.
 //
 // Deleting politicians cascades to trades (and trades cascades to
 // trade_returns). Deleting stocks cascades to stock_prices. Price history
@@ -111,7 +113,7 @@ export async function GET(req: NextRequest) {
     await insertChunks(
       "trades",
       seed.trades.map((t) => ({
-        politician_id: t.filer_id,
+        politician_id: t.politician_id,
         ticker: t.ticker,
         trade_type: t.trade_type,
         owner: t.owner,
