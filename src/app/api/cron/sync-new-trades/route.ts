@@ -250,6 +250,7 @@ export async function GET(req: NextRequest) {
       trade_type: tradeType,
       owner: mapOwner(t.owner),
       transaction_date: t.transaction_date,
+      filing_date: t.filing_date,
       amount_min: t.amount_range_low,
       amount_max: t.amount_range_high,
       amount_label: t.amount_range_label,

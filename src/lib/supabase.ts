@@ -49,6 +49,7 @@ export type Trade = {
   trade_type: TradeType;
   owner: OwnerType;
   transaction_date: string;
+  filing_date: string | null;
   amount_min: number | null;
   amount_max: number | null;
   amount_label: string | null;
