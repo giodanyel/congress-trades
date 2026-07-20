@@ -42,6 +42,7 @@ type ExistingTradeRow = {
   owner: string;
   amount_label: string | null;
   external_id: string | null;
+  filing_date: string | null;
 };
 
 function normalizeName(s: string) {
@@ -131,7 +132,7 @@ export async function GET(req: NextRequest) {
       supabase.from("politicians").select("*").returns<Politician[]>(),
       supabase
         .from("trades")
-        .select("id, politician_id, ticker, transaction_date, trade_type, owner, amount_label, external_id")
+        .select("id, politician_id, ticker, transaction_date, trade_type, owner, amount_label, external_id, filing_date")
         .returns<ExistingTradeRow[]>(),
       supabase.from("stocks").select("ticker"),
       fetch(TRADES_URL, { headers: { "User-Agent": "Mozilla/5.0 (compatible; CongressTradesBot/1.0)" } }),
@@ -177,6 +178,10 @@ export async function GET(req: NextRequest) {
   }
 
   const knownExternalIds = new Set<string>();
+  // Rows already matched to a source record but still missing filing_date
+  // (from before that column existed, or from the natural-key backfill
+  // pass which only set external_id). Lets a re-run fill in the gap.
+  const externalIdToRowMissingFilingDate = new Map<string, string>();
   // For rows that don't have an external_id yet (the original seed), map
   // their natural key to their row id so a matching source record can
   // backfill the external_id instead of being inserted as a duplicate.
@@ -184,6 +189,9 @@ export async function GET(req: NextRequest) {
   for (const t of existingTrades ?? []) {
     if (t.external_id) {
       knownExternalIds.add(t.external_id);
+      if (!t.filing_date) {
+        externalIdToRowMissingFilingDate.set(t.external_id, t.id);
+      }
     } else {
       naturalKeyToId.set(
         naturalKey(t.politician_id, t.ticker, t.transaction_date, t.trade_type, t.owner, t.amount_label),
@@ -203,11 +211,19 @@ export async function GET(req: NextRequest) {
 
   const newStocks = new Map<string, string>();
   const newTradeRows: Record<string, unknown>[] = [];
-  const backfillIds: { id: string; external_id: string }[] = [];
+  const backfillIds: { id: string; external_id: string; filing_date: string | null }[] = [];
+  let filingDateBackfilled = 0;
 
   for (const t of congressTrades) {
     if (knownExternalIds.has(t.id)) {
       skippedAlreadyKnown++;
+      // Already matched, but might still be missing filing_date if it was
+      // matched before that column existed or via the natural-key pass.
+      const rowId = externalIdToRowMissingFilingDate.get(t.id);
+      if (rowId && t.filing_date) {
+        backfillIds.push({ id: rowId, external_id: t.id, filing_date: t.filing_date });
+        filingDateBackfilled++;
+      }
       continue;
     }
     if (!t.ticker) {
@@ -235,7 +251,7 @@ export async function GET(req: NextRequest) {
     );
     const existingId = naturalKeyToId.get(key);
     if (existingId) {
-      backfillIds.push({ id: existingId, external_id: t.id });
+      backfillIds.push({ id: existingId, external_id: t.id, filing_date: t.filing_date });
       backfilled++;
       continue;
     }
@@ -291,7 +307,12 @@ export async function GET(req: NextRequest) {
     for (let i = 0; i < backfillIds.length; i += BACKFILL_CONCURRENCY) {
       const slice = backfillIds.slice(i, i + BACKFILL_CONCURRENCY);
       const results = await Promise.all(
-        slice.map(({ id, external_id }) => supabase.from("trades").update({ external_id }).eq("id", id))
+        slice.map(({ id, external_id, filing_date }) =>
+          supabase
+            .from("trades")
+            .update(filing_date ? { external_id, filing_date } : { external_id })
+            .eq("id", id)
+        )
       );
       for (const r of results) {
         if (r.error) backfillErrors.push(r.error.message);
@@ -300,12 +321,13 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({
-    debugVersion: "v3",
+    debugVersion: "v4",
     sourceRecords: sourceTrades.length,
     congressRecords: congressTrades.length,
     newTrades: newTradeRows.length,
     newStocks: newStocks.size,
     backfilled: skipBackfill ? 0 : backfilled,
+    filingDateBackfilled: skipBackfill ? 0 : filingDateBackfilled,
     backfillPending: backfillIds.length,
     backfillSkipped: skipBackfill,
     backfillErrors: backfillErrors.length > 0 ? backfillErrors.slice(0, 5) : undefined,
