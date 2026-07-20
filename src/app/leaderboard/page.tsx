@@ -5,21 +5,9 @@ import {
   type Politician,
   type Trade,
 } from "@/lib/supabase";
+import { formatUsd, partyStyle } from "@/lib/ui";
 
 export const dynamic = "force-dynamic";
-
-function formatUsd(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-    notation: "compact",
-  }).format(value);
-}
-
-function titleCase(s: string) {
-  return s.charAt(0) + s.slice(1).toLowerCase();
-}
 
 export default async function LeaderboardPage() {
   const { data: politicians } = await supabase
@@ -57,43 +45,32 @@ export default async function LeaderboardPage() {
     .sort((a, b) => (b.stats!.volume ?? 0) - (a.stats!.volume ?? 0));
 
   return (
-    <div className="flex flex-1 flex-col bg-white px-6 py-16 dark:bg-black">
+    <div className="flex flex-1 flex-col bg-white px-6 py-10 dark:bg-black">
       <div className="mx-auto w-full max-w-3xl">
         <div className="flex items-center justify-between">
-          <Link
-            href="/"
-            className="text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
-          >
-            &larr; Back to all politicians
-          </Link>
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+            Most Active Traders
+          </h1>
           <Link
             href="/leaderboard/roi"
             className="text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
           >
-            Estimated ROI Leaderboard &rarr;
+            Top Performers &rarr;
           </Link>
         </div>
-
-        <h1 className="mt-4 text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-          Most Active Traders
-        </h1>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-          Ranked by estimated total disclosed trade volume (sum of each trade&apos;s
-          amount-range midpoint). This reflects trading activity, not
-          investment performance.{" "}
+          Ranked by estimated total disclosed trade volume.{" "}
           <strong className="text-zinc-700 dark:text-zinc-300">
-            This is not a return-on-investment (ROI) ranking.
+            This reflects activity, not performance.
           </strong>{" "}
-          See the{" "}
+          For gains and losses, see{" "}
           <Link href="/leaderboard/roi" className="underline">
-            Estimated ROI Leaderboard
-          </Link>{" "}
-          for that. A true ROI leaderboard requires historical stock price data at each
-          trade date, which is planned for a future update and will be clearly
-          labeled with a confidence score once added.
+            Top Performers
+          </Link>
+          .
         </p>
 
-        <div className="mt-8 overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
+        <div className="mt-6 overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
           <table className="w-full text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
               <tr>
@@ -105,34 +82,38 @@ export default async function LeaderboardPage() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, i) => (
-                <tr
-                  key={row.politician.id}
-                  className="border-t border-zinc-100 dark:border-zinc-900"
-                >
-                  <td className="px-4 py-2 text-zinc-400">{i + 1}</td>
-                  <td className="px-4 py-2 font-medium text-zinc-900 dark:text-zinc-50">
-                    <Link
-                      href={`/politicians/${row.politician.id}`}
-                      className="hover:underline"
-                    >
-                      {row.politician.full_name}
-                    </Link>
-                    <span className="ml-2 text-xs font-normal text-zinc-500 dark:text-zinc-400">
-                      {titleCase(row.politician.party)} &middot; {row.politician.state}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2 text-zinc-600 dark:text-zinc-300">
-                    {row.stats!.tradeCount}
-                  </td>
-                  <td className="px-4 py-2 text-zinc-600 dark:text-zinc-300">
-                    {row.stats!.purchases} / {row.stats!.sales}
-                  </td>
-                  <td className="px-4 py-2 font-medium text-zinc-900 dark:text-zinc-50">
-                    {formatUsd(row.stats!.volume)}
-                  </td>
-                </tr>
-              ))}
+              {rows.map((row, i) => {
+                const style = partyStyle(row.politician.party);
+                return (
+                  <tr
+                    key={row.politician.id}
+                    className="border-t border-zinc-100 dark:border-zinc-900"
+                  >
+                    <td className="px-4 py-2 text-zinc-400">{i + 1}</td>
+                    <td className="px-4 py-2 font-medium text-zinc-900 dark:text-zinc-50">
+                      <Link
+                        href={`/politicians/${row.politician.id}`}
+                        className="flex items-center gap-2 hover:underline"
+                      >
+                        <span className={`h-2 w-2 shrink-0 rounded-full ${style.dot}`} />
+                        {row.politician.full_name}
+                        <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">
+                          {row.politician.state}
+                        </span>
+                      </Link>
+                    </td>
+                    <td className="px-4 py-2 text-zinc-600 dark:text-zinc-300">
+                      {row.stats!.tradeCount}
+                    </td>
+                    <td className="px-4 py-2 text-zinc-600 dark:text-zinc-300">
+                      {row.stats!.purchases} / {row.stats!.sales}
+                    </td>
+                    <td className="px-4 py-2 font-medium text-zinc-900 dark:text-zinc-50">
+                      {formatUsd(row.stats!.volume, true)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

@@ -8,21 +8,9 @@ import {
   type Stock,
   type TradeReturn,
 } from "@/lib/supabase";
+import { formatUsd, partyStyle, titleCase } from "@/lib/ui";
 
 export const dynamic = "force-dynamic";
-
-function formatUsd(value: number | null) {
-  if (value === null) return "—";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
-function titleCase(s: string) {
-  return s.charAt(0) + s.slice(1).toLowerCase();
-}
 
 export default async function PoliticianPage({
   params,
@@ -70,22 +58,22 @@ export default async function PoliticianPage({
     0
   );
 
-  return (
-    <div className="flex flex-1 flex-col bg-white px-6 py-16 dark:bg-black">
-      <div className="mx-auto w-full max-w-3xl">
-        <Link
-          href="/"
-          className="text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
-        >
-          &larr; Back to all politicians
-        </Link>
+  const style = partyStyle(politician.party);
 
-        <h1 className="mt-4 text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-          {politician.full_name}
-        </h1>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-          {titleCase(politician.party)} &middot; {politician.state} &middot;{" "}
-          {titleCase(politician.chamber)}
+  return (
+    <div className="flex flex-1 flex-col bg-white px-6 py-10 dark:bg-black">
+      <div className="mx-auto w-full max-w-3xl">
+        <div className="flex items-center gap-3">
+          <span className={`h-3 w-3 shrink-0 rounded-full ${style.dot}`} />
+          <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+            {politician.full_name}
+          </h1>
+        </div>
+        <p className="mt-1 flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${style.badge}`}>
+            {style.label}
+          </span>
+          {politician.state} &middot; {titleCase(politician.chamber)}
         </p>
         {politician.bio && (
           <p className="mt-4 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">

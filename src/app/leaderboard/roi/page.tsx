@@ -6,23 +6,9 @@ import {
   type Trade,
   type TradeReturn,
 } from "@/lib/supabase";
+import { formatPct, partyStyle, confidenceStyle } from "@/lib/ui";
 
 export const dynamic = "force-dynamic";
-
-function formatPct(value: number) {
-  return `${value >= 0 ? "+" : ""}${(value * 100).toFixed(1)}%`;
-}
-
-function titleCase(s: string) {
-  return s.charAt(0) + s.slice(1).toLowerCase();
-}
-
-const confidenceStyle: Record<string, string> = {
-  HIGH: "text-emerald-600 dark:text-emerald-400",
-  MEDIUM: "text-amber-600 dark:text-amber-400",
-  LOW: "text-orange-600 dark:text-orange-400",
-  UNAVAILABLE: "text-zinc-400 dark:text-zinc-600",
-};
 
 export default async function RoiLeaderboardPage() {
   const [{ data: politicians }, { data: trades }, { data: returns }] =
@@ -79,38 +65,29 @@ export default async function RoiLeaderboardPage() {
   const noPriceDataYet = (returns ?? []).length === 0;
 
   return (
-    <div className="flex flex-1 flex-col bg-white px-6 py-16 dark:bg-black">
+    <div className="flex flex-1 flex-col bg-white px-6 py-10 dark:bg-black">
       <div className="mx-auto w-full max-w-3xl">
         <div className="flex items-center justify-between">
-          <Link
-            href="/"
-            className="text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
-          >
-            &larr; Back to all politicians
-          </Link>
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+            Top Performers
+          </h1>
           <Link
             href="/leaderboard"
             className="text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
           >
-            Most Active Traders &rarr;
+            Most Active &rarr;
           </Link>
         </div>
-
-        <h1 className="mt-4 text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-          Estimated ROI Leaderboard
-        </h1>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-          For each trade, we compare the stock&apos;s price on the trade date to
-          its most recent available price. For purchases, a rising price is a
-          gain; for sales, a falling price afterward counts as a gain (good
-          timing). Each politician&apos;s score is a dollar-weighted average
-          across their priced trades, using the disclosed amount-range
-          midpoint as position size.{" "}
+          Every politician with at least one priced trade, ranked by estimated
+          ROI &mdash; including members who haven&apos;t traded recently.{" "}
+          <Link href="/" className="underline">
+            See the homepage
+          </Link>{" "}
+          for top performers who are currently active.{" "}
           <strong className="text-zinc-700 dark:text-zinc-300">
-            These are estimates, not exact figures
-          </strong>{" "}
-          — STOCK Act filings never disclose exact share counts or exact
-          dollar amounts.
+            These are estimates, not exact figures.
+          </strong>
         </p>
 
         {noPriceDataYet && (
@@ -125,7 +102,7 @@ export default async function RoiLeaderboardPage() {
           </div>
         )}
 
-        <div className="mt-8 overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
+        <div className="mt-6 overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
           <table className="w-full text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
               <tr>
@@ -137,44 +114,49 @@ export default async function RoiLeaderboardPage() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, i) => (
-                <tr
-                  key={row.politician.id}
-                  className="border-t border-zinc-100 dark:border-zinc-900"
-                >
-                  <td className="px-4 py-2 text-zinc-400">{i + 1}</td>
-                  <td className="px-4 py-2 font-medium text-zinc-900 dark:text-zinc-50">
-                    <Link
-                      href={`/politicians/${row.politician.id}`}
-                      className="hover:underline"
-                    >
-                      {row.politician.full_name}
-                    </Link>
-                    <span className="ml-2 text-xs font-normal text-zinc-500 dark:text-zinc-400">
-                      {titleCase(row.politician.party)} &middot; {row.politician.state}
-                    </span>
-                  </td>
-                  <td
-                    className={`px-4 py-2 font-semibold ${
-                      row.roi >= 0
-                        ? "text-emerald-600 dark:text-emerald-400"
-                        : "text-red-600 dark:text-red-400"
-                    }`}
+              {rows.map((row, i) => {
+                const style = partyStyle(row.politician.party);
+                const positive = row.roi >= 0;
+                return (
+                  <tr
+                    key={row.politician.id}
+                    className="border-t border-zinc-100 dark:border-zinc-900"
                   >
-                    {formatPct(row.roi)}
-                  </td>
-                  <td className="px-4 py-2 text-zinc-600 dark:text-zinc-300">
-                    {row.agg!.estimatedGainLoss >= 0 ? "+" : "-"}$
-                    {Math.abs(row.agg!.estimatedGainLoss).toLocaleString("en-US", {
-                      maximumFractionDigits: 0,
-                    })}
-                  </td>
-                  <td className="px-4 py-2 text-zinc-500 dark:text-zinc-400">
-                    {row.agg!.pricedTrades}/{row.agg!.totalTrades} trades priced (
-                    {(row.coverage * 100).toFixed(0)}%)
-                  </td>
-                </tr>
-              ))}
+                    <td className="px-4 py-2 text-zinc-400">{i + 1}</td>
+                    <td className="px-4 py-2 font-medium text-zinc-900 dark:text-zinc-50">
+                      <Link
+                        href={`/politicians/${row.politician.id}`}
+                        className="flex items-center gap-2 hover:underline"
+                      >
+                        <span className={`h-2 w-2 shrink-0 rounded-full ${style.dot}`} />
+                        {row.politician.full_name}
+                        <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">
+                          {row.politician.state}
+                        </span>
+                      </Link>
+                    </td>
+                    <td
+                      className={`px-4 py-2 font-semibold ${
+                        positive
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-red-600 dark:text-red-400"
+                      }`}
+                    >
+                      {formatPct(row.roi)}
+                    </td>
+                    <td className="px-4 py-2 text-zinc-600 dark:text-zinc-300">
+                      {row.agg!.estimatedGainLoss >= 0 ? "+" : "-"}$
+                      {Math.abs(row.agg!.estimatedGainLoss).toLocaleString("en-US", {
+                        maximumFractionDigits: 0,
+                      })}
+                    </td>
+                    <td className="px-4 py-2 text-zinc-500 dark:text-zinc-400">
+                      {row.agg!.pricedTrades}/{row.agg!.totalTrades} priced (
+                      {(row.coverage * 100).toFixed(0)}%)
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

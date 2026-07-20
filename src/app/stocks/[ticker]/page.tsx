@@ -8,12 +8,9 @@ import {
   type Politician,
   type TradeReturn,
 } from "@/lib/supabase";
+import { partyStyle, titleCase } from "@/lib/ui";
 
 export const dynamic = "force-dynamic";
-
-function titleCase(s: string) {
-  return s.charAt(0) + s.slice(1).toLowerCase();
-}
 
 export default async function StockPage({
   params,
@@ -56,16 +53,9 @@ export default async function StockPage({
   const returnByTradeId = new Map((returns ?? []).map((r) => [r.trade_id, r]));
 
   return (
-    <div className="flex flex-1 flex-col bg-white px-6 py-16 dark:bg-black">
+    <div className="flex flex-1 flex-col bg-white px-6 py-10 dark:bg-black">
       <div className="mx-auto w-full max-w-3xl">
-        <Link
-          href="/"
-          className="text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
-        >
-          &larr; Back to all politicians
-        </Link>
-
-        <h1 className="mt-4 text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+        <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
           {stock.ticker}
         </h1>
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
@@ -101,7 +91,11 @@ export default async function StockPage({
                     </td>
                     <td className="px-4 py-2 font-medium text-zinc-900 dark:text-zinc-50">
                       {p ? (
-                        <Link href={`/politicians/${p.id}`} className="hover:underline">
+                        <Link
+                          href={`/politicians/${p.id}`}
+                          className="flex items-center gap-2 hover:underline"
+                        >
+                          <span className={`h-2 w-2 shrink-0 rounded-full ${partyStyle(p.party).dot}`} />
                           {p.full_name}
                         </Link>
                       ) : (
