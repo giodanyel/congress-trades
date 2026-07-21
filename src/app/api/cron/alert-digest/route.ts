@@ -166,8 +166,13 @@ export async function GET(req: NextRequest) {
     .slice(0, TOP_PERFORMER_LIMIT);
   const aggByPoliticianId = new Map(topPerformers.map(([id, a]) => [id, a]));
 
-  function toRow(t: Trade): Row {
-    const p = politicianById.get(t.politician_id)!;
+  // Defensive: a trade whose politician_id doesn't resolve (shouldn't
+  // happen given the FK, but data issues do occur) used to crash this
+  // whole route with a non-null assertion -- taking down every user's
+  // digest for one bad row instead of just skipping it.
+  function toRow(t: Trade): Row | null {
+    const p = politicianById.get(t.politician_id);
+    if (!p) return null;
     const r = returnByTradeId.get(t.id);
     const value = estimatedTradeValue(t);
     const pnl = r && r.return_pct !== null && value !== null ? r.return_pct * value : null;
@@ -180,6 +185,10 @@ export async function GET(req: NextRequest) {
       agg: politicianAgg,
       preDisclosureMovePct: r?.pre_disclosure_move_pct ?? null,
     };
+  }
+
+  function toRows(trades: Trade[]): Row[] {
+    return trades.map(toRow).filter((r): r is Row => r !== null);
   }
 
   const confirmedUsers = users.filter((u) => u.email && u.email_confirmed_at);
@@ -216,12 +225,12 @@ export async function GET(req: NextRequest) {
       {
         title: "New trades from people & tickers you follow",
         description: "Straight from your Following list, newest first.",
-        rows: followedNewTrades.slice(0, MAX_ROWS_PER_SECTION).map(toRow),
+        rows: toRows(followedNewTrades.slice(0, MAX_ROWS_PER_SECTION)),
       },
       {
         title: "New trades from top-performing members of Congress",
         description: "Ranked by estimated ROI on their priced trades to date.",
-        rows: topPerformerNewTrades.slice(0, MAX_ROWS_PER_SECTION).map(toRow),
+        rows: toRows(topPerformerNewTrades.slice(0, MAX_ROWS_PER_SECTION)),
       },
     ]);
 

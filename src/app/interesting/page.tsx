@@ -9,7 +9,7 @@ import {
   type WatchlistItem,
 } from "@/lib/supabase";
 import { createClient } from "@/lib/supabase/server";
-import { partyStyle } from "@/lib/ui";
+import { partyStyle, formatPct } from "@/lib/ui";
 import { aggregateByPolitician, roiOf, isActive, sizeTier } from "@/lib/analytics";
 import { committeeConflicts } from "@/lib/committees";
 import { sectorForTicker } from "@/lib/sectors";
@@ -194,9 +194,10 @@ export default async function InterestingBuysPage() {
               Hot stocks right now
             </h2>
             <p className="mt-1 text-xs text-stone-400 dark:text-stone-600">
-              The tickers with the strongest combined signal above, with where
-              the price is trading relative to its own recent range &mdash;
-              context to help you dig in, not a suggested entry price.
+              The tickers with the strongest combined signal above, with
+              live price, day/week/month/3-month moves, and where it&apos;s
+              trading in its 90-day range &mdash; context to help you dig in,
+              not a suggested entry price.
             </p>
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {hotTickers.map((h) => {
@@ -218,12 +219,31 @@ export default async function InterestingBuysPage() {
 
                     {sig ? (
                       <>
-                        <div className="mt-2 text-2xl font-heading font-semibold text-stone-900 dark:text-stone-50">
-                          ${sig.latestClose.toFixed(2)}
+                        <div className="mt-2 flex items-baseline gap-2">
+                          <span className="text-2xl font-heading font-semibold text-stone-900 dark:text-stone-50">
+                            ${sig.price.toFixed(2)}
+                          </span>
+                          {sig.dayChangePct !== null && (
+                            <span
+                              className={`text-xs font-semibold ${
+                                sig.dayChangePct >= 0
+                                  ? "text-emerald-600 dark:text-emerald-400"
+                                  : "text-red-600 dark:text-red-400"
+                              }`}
+                            >
+                              {formatPct(sig.dayChangePct)}
+                            </span>
+                          )}
                         </div>
-                        <div className="text-[11px] text-stone-400 dark:text-stone-600">
-                          as of {sig.latestDate}
+                        <div className="flex items-center gap-1 text-[11px] text-stone-400 dark:text-stone-600">
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${
+                              sig.isLive ? "bg-emerald-500 animate-pulse-soft" : "bg-stone-300 dark:bg-stone-700"
+                            }`}
+                          />
+                          {sig.isLive ? "Live" : `As of ${sig.asOf.slice(0, 10)}`}
                         </div>
+
                         <div className="mt-2 h-1.5 w-full rounded-full bg-stone-100 dark:bg-stone-800">
                           <div
                             className="h-1.5 rounded-full bg-cat-stocks"
@@ -233,6 +253,29 @@ export default async function InterestingBuysPage() {
                         <div className="mt-1 flex justify-between text-[11px] text-stone-400 dark:text-stone-600">
                           <span>90d low ${sig.low90.toFixed(2)}</span>
                           <span>90d high ${sig.high90.toFixed(2)}</span>
+                        </div>
+
+                        <div className="mt-2.5 flex gap-3 text-[11px]">
+                          {[
+                            ["1W", sig.weekChangePct],
+                            ["1M", sig.monthChangePct],
+                            ["3M", sig.threeMonthChangePct],
+                          ].map(([label, pct]) => (
+                            <span key={label as string} className="flex items-baseline gap-1">
+                              <span className="text-stone-400 dark:text-stone-600">{label}</span>
+                              <span
+                                className={
+                                  pct === null
+                                    ? "text-stone-400 dark:text-stone-600"
+                                    : (pct as number) >= 0
+                                      ? "font-medium text-emerald-600 dark:text-emerald-400"
+                                      : "font-medium text-red-600 dark:text-red-400"
+                                }
+                              >
+                                {pct === null ? "—" : formatPct(pct as number)}
+                              </span>
+                            </span>
+                          ))}
                         </div>
                       </>
                     ) : (

@@ -20,6 +20,12 @@ export const dynamic = "force-dynamic";
 const RECENT_BUYS_LIMIT = 8;
 const TOP_PERFORMERS_LIMIT = 6;
 
+// Logged-out visitors get a small, deliberately-stale preview -- enough to
+// see what the product does, not enough to replace having an account.
+// Everything else in the app requires signing in (see middleware.ts).
+const PREVIEW_LIMIT = 3;
+const PREVIEW_STALE_DAYS = 30;
+
 export default async function Home() {
   const supabaseAuth = await createClient();
   const [
@@ -62,13 +68,24 @@ export default async function Home() {
   // the ROI leaderboard and Interesting Buys so the numbers always agree.
   const byPolitician = aggregateByPolitician(trades ?? [], returnByTradeId);
 
+  // Logged-out visitors see the same shape of data, just older and capped
+  // shorter -- a real preview of the product, not today's actual activity.
+  const previewCutoff = now - PREVIEW_STALE_DAYS * 24 * 60 * 60 * 1000;
+  const tradesForView = user
+    ? trades ?? []
+    : (trades ?? []).filter((t) => new Date(t.transaction_date).getTime() < previewCutoff);
+  const performerLimit = user ? TOP_PERFORMERS_LIMIT : PREVIEW_LIMIT;
+  const buysLimit = user ? RECENT_BUYS_LIMIT : PREVIEW_LIMIT;
+  const performerCutoff = user ? cutoff : previewCutoff - ACTIVE_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+
   const topPerformers = [...byPolitician.entries()]
     .map(([politicianId, agg]) => ({ politician: politicianById.get(politicianId), agg }))
     .filter(
       (r) =>
         r.politician &&
         r.agg.pricedTrades > 0 &&
-        new Date(r.agg.lastTradeDate).getTime() >= cutoff
+        new Date(r.agg.lastTradeDate).getTime() >= performerCutoff &&
+        (user || new Date(r.agg.lastTradeDate).getTime() < previewCutoff)
     )
     .map((r) => ({
       politician: r.politician!,
@@ -77,12 +94,12 @@ export default async function Home() {
       alpha: alphaOf(r.agg),
     }))
     .sort((a, b) => b.roi - a.roi)
-    .slice(0, TOP_PERFORMERS_LIMIT);
+    .slice(0, performerLimit);
 
-  const recentBuys = (trades ?? [])
+  const recentBuys = tradesForView
     .filter((t) => t.trade_type === "PURCHASE")
     .sort((a, b) => b.transaction_date.localeCompare(a.transaction_date))
-    .slice(0, RECENT_BUYS_LIMIT);
+    .slice(0, buysLimit);
 
   const hasAnyPriceData = (returns ?? []).length > 0;
 
@@ -97,6 +114,33 @@ export default async function Home() {
           the STOCK Act. Dollar figures are always estimates from disclosed
           ranges, never exact amounts.
         </p>
+
+        {!user && (
+          <div className="card-pop accent-rail accent-following mt-6 flex flex-wrap items-center justify-between gap-3 p-4">
+            <div>
+              <p className="text-sm font-medium text-stone-900 dark:text-stone-50">
+                You&apos;re viewing a free preview with data older than {PREVIEW_STALE_DAYS} days.
+              </p>
+              <p className="mt-0.5 text-xs text-stone-500 dark:text-stone-400">
+                Create a free account to see today&apos;s trades, live Hot Stocks pricing, Interesting Buys, and your own alerts.
+              </p>
+            </div>
+            <div className="flex shrink-0 gap-2">
+              <Link
+                href="/signup"
+                className="rounded-full bg-brand px-4 py-2 text-xs font-medium text-white transition-transform hover:scale-[1.02] active:scale-[0.98]"
+              >
+                Sign up free
+              </Link>
+              <Link
+                href="/login"
+                className="rounded-full border border-stone-200 px-4 py-2 text-xs font-medium text-stone-600 hover:border-stone-300 dark:border-white/10 dark:text-stone-300"
+              >
+                Log in
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* Quick orientation stats -- a friendly at-a-glance strip rather
             than making a first-time visitor read tables to understand
@@ -121,18 +165,21 @@ export default async function Home() {
         {/* Top performers, currently active */}
         <div className="mt-10 flex items-center justify-between">
           <h2 className="font-heading text-sm font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400">
-            Top Performers, Currently Active
+            {user ? "Top Performers, Currently Active" : "Top Performers (preview)"}
           </h2>
-          <Link
-            href="/leaderboard/roi"
-            className="text-xs font-medium text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200"
-          >
-            Full ROI leaderboard &rarr;
-          </Link>
+          {user && (
+            <Link
+              href="/leaderboard/roi"
+              className="text-xs font-medium text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200"
+            >
+              Full ROI leaderboard &rarr;
+            </Link>
+          )}
         </div>
         <p className="mt-1 text-xs text-stone-400 dark:text-stone-600">
-          Ranked by estimated ROI, limited to politicians who traded in the
-          last {ACTIVE_WINDOW_DAYS} days.
+          {user
+            ? `Ranked by estimated ROI, limited to politicians who traded in the last ${ACTIVE_WINDOW_DAYS} days.`
+            : `Ranked by estimated ROI. Sign up to see politicians active in the last ${ACTIVE_WINDOW_DAYS} days instead of this ${PREVIEW_STALE_DAYS}+ day snapshot.`}
         </p>
 
         {!hasAnyPriceData && (
@@ -173,12 +220,14 @@ export default async function Home() {
                   >
                     {formatPct(row.roi)}
                   </span>
-                  <FollowButton
-                    kind="politician"
-                    refId={row.politician.id}
-                    initialFollowing={followedPoliticianIds.has(row.politician.id)}
-                    size="sm"
-                  />
+                  {user && (
+                    <FollowButton
+                      kind="politician"
+                      refId={row.politician.id}
+                      initialFollowing={followedPoliticianIds.has(row.politician.id)}
+                      size="sm"
+                    />
+                  )}
                 </div>
               </li>
             );
@@ -188,14 +237,16 @@ export default async function Home() {
         {/* Latest buys */}
         <div className="mt-12 flex items-center justify-between">
           <h2 className="font-heading text-sm font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400">
-            Latest Buys
+            {user ? "Latest Buys" : "Latest Buys (preview)"}
           </h2>
-          <Link
-            href="/leaderboard"
-            className="text-xs font-medium text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200"
-          >
-            Most active traders &rarr;
-          </Link>
+          {user && (
+            <Link
+              href="/leaderboard"
+              className="text-xs font-medium text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200"
+            >
+              Most active traders &rarr;
+            </Link>
+          )}
         </div>
 
         {recentBuys.length === 0 && (
@@ -235,7 +286,7 @@ export default async function Home() {
                   <span className="text-sm font-medium text-stone-700 dark:text-stone-300">
                     {t.amount_label ?? formatUsd(estimatedTradeValue(t))}
                   </span>
-                  {p && (
+                  {user && p && (
                     <FollowButton
                       kind="politician"
                       refId={p.id}
