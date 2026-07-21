@@ -78,7 +78,7 @@ export default async function LeaderboardPage() {
                     key={row.politician.id}
                     className="border-t border-stone-100 dark:border-stone-900"
                   >
-                    <td className="px-4 py-2 text-stone-400">{i + 1}</td>
+                    <td className="px-4 py-2 font-mono text-stone-400">{i + 1}</td>
                     <td className="px-4 py-2 font-medium text-stone-900 dark:text-stone-50">
                       <Link
                         href={`/politicians/${row.politician.id}`}
@@ -91,13 +91,13 @@ export default async function LeaderboardPage() {
                         </span>
                       </Link>
                     </td>
-                    <td className="px-4 py-2 text-stone-600 dark:text-stone-300">
+                    <td className="px-4 py-2 font-mono text-stone-600 dark:text-stone-300">
                       {row.stats!.tradeCount}
                     </td>
-                    <td className="px-4 py-2 text-stone-600 dark:text-stone-300">
+                    <td className="px-4 py-2 font-mono text-stone-600 dark:text-stone-300">
                       {row.stats!.purchases} / {row.stats!.sales}
                     </td>
-                    <td className="px-4 py-2 font-medium text-stone-900 dark:text-stone-50">
+                    <td className="px-4 py-2 font-mono font-medium text-stone-900 dark:text-stone-50">
                       {formatUsd(row.stats!.volume, true)}
                     </td>
                   </tr>

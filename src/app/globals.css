@@ -1,33 +1,35 @@
 @import "tailwindcss";
 
-/* A warm off-white instead of stark white, and a soft charcoal instead of
-   pure black -- easier on the eyes and reads as friendlier/less "terminal"
-   than the previous zinc-50/zinc-950 pairing. Brand teal is used sparingly
-   for links, active states, and the logo; red/green stay reserved for
-   gain/loss and party colors so they keep their meaning.
+/* Dark-mode-first, terminal-inspired palette -- a near-black backdrop like
+   the trading dashboards this product sits alongside, instead of a light
+   SaaS look. Tailwind's dark: variant is switched from OS-preference to a
+   plain `.dark` class on <html> (see layout.tsx) so the theme is the same
+   for every visitor regardless of their system setting -- the whole point
+   is one consistent, deliberate "dashboard at night" identity, not a
+   toggle. Brand teal + the category accent colors are our own twist: a
+   multi-color system instead of a single green/red terminal palette, so
+   each section of the app still reads as its own "world" at a glance. */
+@custom-variant dark (&:where(.dark, .dark *));
 
-   Each major section of the app also gets its own accent color so a user
-   can tell at a glance which "world" they're in (politicians vs. stocks
-   vs. news vs. their own Following list) even before reading anything. */
 :root {
-  --background: #faf9f7;
-  --foreground: #1c1917;
-  --surface: #ffffff;
-  --brand: #0d9488;
-  --brand-soft: #ecfdf5;
+  --background: #050608;
+  --foreground: #f4f4f5;
+  --surface: #0e1015;
+  --brand: #2dd4bf;
+  --brand-soft: #0f2e2a;
 
-  --cat-politicians: #4f46e5;
-  --cat-politicians-soft: #eef2ff;
-  --cat-stocks: #0d9488;
-  --cat-stocks-soft: #ecfdf5;
-  --cat-news: #d97706;
-  --cat-news-soft: #fffbeb;
-  --cat-following: #7c3aed;
-  --cat-following-soft: #f5f3ff;
-  --cat-performance: #e11d48;
-  --cat-performance-soft: #fff1f2;
+  --cat-politicians: #818cf8;
+  --cat-politicians-soft: #1e1b4b;
+  --cat-stocks: #2dd4bf;
+  --cat-stocks-soft: #0f2e2a;
+  --cat-news: #fbbf24;
+  --cat-news-soft: #3a2a08;
+  --cat-following: #a78bfa;
+  --cat-following-soft: #2e1f4d;
+  --cat-performance: #fb7185;
+  --cat-performance-soft: #3a0f18;
 
-  --shadow-color: 220 20% 30%;
+  --shadow-color: 240 40% 1%;
 }
 
 @theme inline {
@@ -50,35 +52,17 @@
 
   --font-sans: var(--font-jakarta), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-heading: var(--font-sora), var(--font-jakarta), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #17151a;
-    --foreground: #f4f4f5;
-    --surface: #201d24;
-    --brand: #2dd4bf;
-    --brand-soft: #0f2e2a;
-
-    --cat-politicians: #818cf8;
-    --cat-politicians-soft: #1e1b4b;
-    --cat-stocks: #2dd4bf;
-    --cat-stocks-soft: #0f2e2a;
-    --cat-news: #fbbf24;
-    --cat-news-soft: #3a2a08;
-    --cat-following: #a78bfa;
-    --cat-following-soft: #2e1f4d;
-    --cat-performance: #fb7185;
-    --cat-performance-soft: #3a0f18;
-
-    --shadow-color: 240 30% 2%;
-  }
+  --font-mono: var(--font-plexmono), ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
+  /* A very faint radial glow behind the top of the page -- just enough to
+     keep the near-black background from feeling like a flat void, echoing
+     the soft-lit dashboard hero look without adding real visual noise. */
+  background-image: radial-gradient(ellipse 1200px 600px at 50% -10%, hsl(168 76% 42% / 0.08), transparent 60%);
+  background-attachment: fixed;
 }
 
 /* "Popped" card: a soft layered shadow instead of a flat border, with a
@@ -88,24 +72,28 @@ body {
   position: relative;
   border-radius: 1rem;
   background: var(--surface);
-  border: 1px solid hsl(var(--shadow-color) / 0.06);
-  /* Resting state already looks lifted off the page, not flush with it --
-     a visible near shadow plus a soft, wide far shadow for real depth. */
+  /* On a near-black background, a dark drop shadow barely reads -- a
+     faint light-on-dark border is what actually separates a card from
+     the page in a dark UI (the shadow below still adds real depth, but
+     the border is what you see first). */
+  border: 1px solid hsl(0 0% 100% / 0.07);
   box-shadow:
-    0 1px 0 hsl(var(--shadow-color) / 0.5),
-    0 2px 5px hsl(var(--shadow-color) / 0.1),
-    0 16px 32px -12px hsl(var(--shadow-color) / 0.45),
-    0 6px 16px -6px hsl(var(--shadow-color) / 0.22);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+    0 1px 0 hsl(0 0% 100% / 0.04) inset,
+    0 2px 5px hsl(var(--shadow-color) / 0.35),
+    0 16px 32px -12px hsl(var(--shadow-color) / 0.6),
+    0 6px 16px -6px hsl(var(--shadow-color) / 0.4);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
 
 .card-pop:hover {
   transform: translateY(-4px);
+  border-color: hsl(168 76% 55% / 0.25);
   box-shadow:
-    0 1px 0 hsl(var(--shadow-color) / 0.5),
-    0 3px 6px hsl(var(--shadow-color) / 0.12),
-    0 28px 48px -16px hsl(var(--shadow-color) / 0.5),
-    0 10px 22px -6px hsl(var(--shadow-color) / 0.28);
+    0 0 0 1px hsl(168 76% 55% / 0.12),
+    0 1px 0 hsl(0 0% 100% / 0.05) inset,
+    0 3px 6px hsl(var(--shadow-color) / 0.4),
+    0 28px 48px -16px hsl(var(--shadow-color) / 0.7),
+    0 10px 22px -6px hsl(var(--shadow-color) / 0.45);
 }
 
 /* Colored left rail identifying which section a card belongs to. Pair

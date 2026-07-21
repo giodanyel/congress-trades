@@ -106,10 +106,14 @@ export default async function Home() {
   return (
     <div className="flex flex-1 flex-col bg-background px-6 py-10">
       <div className="mx-auto w-full max-w-4xl">
-        <h1 className="text-3xl font-heading font-semibold tracking-tight text-stone-900 dark:text-stone-50">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-brand">
+          <span className="h-1.5 w-1.5 rounded-full bg-brand animate-pulse-soft" />
+          Live congressional trading data
+        </span>
+        <h1 className="mt-3 text-4xl font-heading font-semibold tracking-tight text-stone-50">
           Congress Trades
         </h1>
-        <p className="mt-2 text-sm leading-relaxed text-stone-500 dark:text-stone-400">
+        <p className="mt-2 max-w-xl text-sm leading-relaxed text-stone-400">
           Current stock activity disclosed by sitting members of Congress under
           the STOCK Act. Dollar figures are always estimates from disclosed
           ranges, never exact amounts.
@@ -147,17 +151,17 @@ export default async function Home() {
             scope. */}
         <div className="mt-6 grid grid-cols-3 gap-3">
           <div className="card-pop px-4 py-3">
-            <p className="font-heading text-xl font-semibold text-brand">{(politicians ?? []).length}</p>
+            <p className="font-mono text-xl font-semibold text-brand">{(politicians ?? []).length}</p>
             <p className="text-xs text-stone-500 dark:text-stone-400">Politicians tracked</p>
           </div>
           <div className="card-pop px-4 py-3">
-            <p className="font-heading text-xl font-semibold text-brand">
+            <p className="font-mono text-xl font-semibold text-brand">
               {(trades ?? []).length.toLocaleString("en-US")}
             </p>
             <p className="text-xs text-stone-500 dark:text-stone-400">Trades disclosed</p>
           </div>
           <div className="card-pop px-4 py-3">
-            <p className="font-heading text-xl font-semibold text-brand">Daily</p>
+            <p className="font-mono text-xl font-semibold text-brand">Daily</p>
             <p className="text-xs text-stone-500 dark:text-stone-400">Data refresh</p>
           </div>
         </div>
@@ -214,7 +218,7 @@ export default async function Home() {
                 </Link>
                 <div className="flex shrink-0 items-center gap-2">
                   <span
-                    className={`text-sm font-semibold ${
+                    className={`font-mono text-sm font-semibold ${
                       positive ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
                     }`}
                   >
@@ -273,7 +277,7 @@ export default async function Home() {
                         "Unknown"
                       )}{" "}
                       <span className="font-normal text-stone-400">bought</span>{" "}
-                      <Link href={`/stocks/${t.ticker}`} className="hover:underline">
+                      <Link href={`/stocks/${t.ticker}`} className="font-mono hover:underline">
                         {t.ticker}
                       </Link>
                     </p>
@@ -283,7 +287,7 @@ export default async function Home() {
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <span className="text-sm font-medium text-stone-700 dark:text-stone-300">
+                  <span className="font-mono text-sm font-medium text-stone-700 dark:text-stone-300">
                     {t.amount_label ?? formatUsd(estimatedTradeValue(t))}
                   </span>
                   {user && p && (

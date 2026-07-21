@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Sora } from "next/font/google";
+import { Plus_Jakarta_Sans, Sora, IBM_Plex_Mono } from "next/font/google";
 import Sidebar from "@/components/Sidebar";
 import { createClient } from "@/lib/supabase/server";
 import "./globals.css";
@@ -22,6 +22,15 @@ const sora = Sora({
   display: "swap",
 });
 
+// Used only for tickers, prices, and percentages -- the classic trading
+// terminal touch, and it also makes columns of numbers actually line up.
+const plexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-plexmono",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "Congress Trades",
   description: "Track stock trades disclosed by members of Congress under the STOCK Act.",
@@ -38,7 +47,10 @@ export default async function RootLayout({
   } = await supabase.auth.getUser();
 
   return (
-    <html lang="en" className={`h-full antialiased ${jakarta.variable} ${sora.variable}`}>
+    <html
+      lang="en"
+      className={`dark h-full antialiased ${jakarta.variable} ${sora.variable} ${plexMono.variable}`}
+    >
       <body className="min-h-full font-sans">
         <div className="flex min-h-full flex-col md:flex-row">
           <Sidebar userEmail={user?.email ?? null} />

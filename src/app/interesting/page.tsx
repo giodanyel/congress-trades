@@ -209,7 +209,7 @@ export default async function InterestingBuysPage() {
                     className="card-pop accent-rail accent-stocks block p-4 transition hover:-translate-y-0.5"
                   >
                     <div className="flex items-baseline justify-between gap-2">
-                      <span className="font-heading text-base font-semibold text-stone-900 dark:text-stone-50">
+                      <span className="font-mono text-base font-semibold text-stone-900 dark:text-stone-50">
                         {h.ticker}
                       </span>
                       <span className="truncate text-xs text-stone-400 dark:text-stone-600">
@@ -220,12 +220,12 @@ export default async function InterestingBuysPage() {
                     {sig ? (
                       <>
                         <div className="mt-2 flex items-baseline gap-2">
-                          <span className="text-2xl font-heading font-semibold text-stone-900 dark:text-stone-50">
+                          <span className="font-mono text-2xl font-semibold text-stone-900 dark:text-stone-50">
                             ${sig.price.toFixed(2)}
                           </span>
                           {sig.dayChangePct !== null && (
                             <span
-                              className={`text-xs font-semibold ${
+                              className={`font-mono text-xs font-semibold ${
                                 sig.dayChangePct >= 0
                                   ? "text-emerald-600 dark:text-emerald-400"
                                   : "text-red-600 dark:text-red-400"
@@ -255,7 +255,7 @@ export default async function InterestingBuysPage() {
                           <span>90d high ${sig.high90.toFixed(2)}</span>
                         </div>
 
-                        <div className="mt-2.5 flex gap-3 text-[11px]">
+                        <div className="mt-2.5 flex gap-3 font-mono text-[11px]">
                           {[
                             ["1W", sig.weekChangePct],
                             ["1M", sig.monthChangePct],
@@ -316,7 +316,7 @@ export default async function InterestingBuysPage() {
                         {p.full_name}
                       </Link>
                       <TradeTypeBadge type={t.trade_type} />
-                      <Link href={`/stocks/${t.ticker}`} className="hover:underline">
+                      <Link href={`/stocks/${t.ticker}`} className="font-mono hover:underline">
                         {t.ticker}
                       </Link>
                     </p>
@@ -330,13 +330,13 @@ export default async function InterestingBuysPage() {
                     </p>
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-0.5">
-                    <span className="text-sm font-medium text-stone-700 dark:text-stone-300">
+                    <span className="font-mono text-sm font-medium text-stone-700 dark:text-stone-300">
                       {t.amount_label}
                     </span>
                     {preMove !== null && t.filing_date && (
                       <span
                         title={`By the ${t.filing_date} disclosure, the price had already ${preMove >= 0 ? "risen" : "fallen"} ${Math.abs(preMove * 100).toFixed(1)}% from the trade price.`}
-                        className={`text-[11px] font-medium ${preMove >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
+                        className={`font-mono text-[11px] font-medium ${preMove >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
                       >
                         {preMove >= 0 ? "+" : ""}
                         {(preMove * 100).toFixed(1)}% pre-disclosure

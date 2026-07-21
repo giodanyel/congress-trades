@@ -62,7 +62,7 @@ export default async function MarketNewsPage() {
               <li key={n.id} className="flex items-center gap-3 px-4 py-3">
                 <Link
                   href={`/stocks/${n.ticker}`}
-                  className="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold"
+                  className="shrink-0 rounded-full px-2 py-0.5 font-mono text-xs font-semibold"
                   style={{ backgroundColor: "var(--cat-stocks-soft)", color: "var(--cat-stocks)" }}
                 >
                   {n.ticker}
@@ -83,7 +83,7 @@ export default async function MarketNewsPage() {
                 {anyActivity && (
                   <span
                     title={quarters.map((q) => `${q.quarter} ${CURRENT_YEAR}: ${q.buys} buys, ${q.sells} sells`).join(" · ")}
-                    className="shrink-0 text-xs font-medium text-stone-500 dark:text-stone-400"
+                    className="shrink-0 font-mono text-xs font-medium text-stone-500 dark:text-stone-400"
                   >
                     {totalBuys > 0 && (
                       <span className="text-emerald-600 dark:text-emerald-400">+{totalBuys}</span>

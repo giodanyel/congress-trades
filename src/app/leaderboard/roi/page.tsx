@@ -89,7 +89,7 @@ export default async function RoiLeaderboardPage() {
                     key={row.politician.id}
                     className="border-t border-stone-100 dark:border-stone-900"
                   >
-                    <td className="px-4 py-2 text-stone-400">{i + 1}</td>
+                    <td className="px-4 py-2 font-mono text-stone-400">{i + 1}</td>
                     <td className="px-4 py-2 font-medium text-stone-900 dark:text-stone-50">
                       <Link
                         href={`/politicians/${row.politician.id}`}
@@ -103,7 +103,7 @@ export default async function RoiLeaderboardPage() {
                       </Link>
                     </td>
                     <td
-                      className={`px-4 py-2 font-semibold ${
+                      className={`px-4 py-2 font-mono font-semibold ${
                         positive
                           ? "text-emerald-600 dark:text-emerald-400"
                           : "text-red-600 dark:text-red-400"
@@ -111,7 +111,7 @@ export default async function RoiLeaderboardPage() {
                     >
                       {formatPct(row.roi)}
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-4 py-2 font-mono">
                       {row.alpha === null ? (
                         <span className="text-stone-400 dark:text-stone-600">—</span>
                       ) : (
@@ -127,13 +127,13 @@ export default async function RoiLeaderboardPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-2 text-stone-600 dark:text-stone-300">
+                    <td className="px-4 py-2 font-mono text-stone-600 dark:text-stone-300">
                       {row.agg!.estimatedGainLoss >= 0 ? "+" : "-"}$
                       {Math.abs(row.agg!.estimatedGainLoss).toLocaleString("en-US", {
                         maximumFractionDigits: 0,
                       })}
                     </td>
-                    <td className="px-4 py-2 text-stone-500 dark:text-stone-400">
+                    <td className="px-4 py-2 font-mono text-stone-500 dark:text-stone-400">
                       {row.agg!.pricedTrades}/{row.agg!.totalTrades} priced (
                       {(row.coverage * 100).toFixed(0)}%)
                     </td>

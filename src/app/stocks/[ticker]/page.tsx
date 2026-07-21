@@ -69,7 +69,7 @@ export default async function StockPage({
     <div className="flex flex-1 flex-col bg-background px-6 py-10">
       <div className="mx-auto w-full max-w-3xl">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-heading font-semibold tracking-tight text-stone-900 dark:text-stone-50">
+          <h1 className="font-mono text-3xl font-semibold tracking-tight text-stone-900 dark:text-stone-50">
             {stock.ticker}
           </h1>
           <FollowButton kind="stock" refId={stock.ticker} initialFollowing={!!watchlistRow} />
@@ -102,7 +102,7 @@ export default async function StockPage({
                   r && r.return_pct !== null && value !== null ? r.return_pct * value : null;
                 return (
                   <tr key={t.id} className="border-t border-stone-100 dark:border-stone-900">
-                    <td className="px-4 py-2 text-stone-600 dark:text-stone-300">
+                    <td className="px-4 py-2 font-mono text-xs text-stone-600 dark:text-stone-300">
                       {t.transaction_date}
                     </td>
                     <td className="px-4 py-2 font-medium text-stone-900 dark:text-stone-50">
@@ -121,10 +121,10 @@ export default async function StockPage({
                     <td className="px-4 py-2">
                       <TradeTypeBadge type={t.trade_type} />
                     </td>
-                    <td className="px-4 py-2 text-stone-600 dark:text-stone-300">
+                    <td className="px-4 py-2 font-mono text-xs text-stone-600 dark:text-stone-300">
                       {t.amount_label}
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-4 py-2 font-mono">
                       {pnl === null ? (
                         <span className="text-stone-400 dark:text-stone-600">
                           {!r || r.confidence === "UNAVAILABLE" ? "no price data" : "—"}
