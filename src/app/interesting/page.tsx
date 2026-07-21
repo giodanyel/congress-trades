@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  supabase,
   getCachedTrades,
   getCachedTradeReturns,
   getCachedPoliticians,
@@ -12,6 +13,7 @@ import { partyStyle } from "@/lib/ui";
 import { aggregateByPolitician, roiOf, isActive, sizeTier } from "@/lib/analytics";
 import { committeeConflicts } from "@/lib/committees";
 import { sectorForTicker } from "@/lib/sectors";
+import { getPriceSignals } from "@/lib/priceSignals";
 import { FollowButton } from "@/components/FollowButton";
 import { TradeTypeBadge } from "@/components/TradeTypeBadge";
 
@@ -130,6 +132,43 @@ export default async function InterestingBuysPage() {
   rows.sort((a, b) => b.score - a.score || b.trade.transaction_date.localeCompare(a.trade.transaction_date));
   const shown = rows.slice(0, ROW_LIMIT);
 
+  // Ticker-level summary: same flagged buys, grouped by stock instead of by
+  // trade, so a ticker several members piled into shows up once with a
+  // combined signal rather than as several near-duplicate rows.
+  type HotTicker = { ticker: string; score: number; tradeCount: number; topFlag: string; lastTradeDate: string };
+  const hotByTicker = new Map<string, HotTicker>();
+  for (const row of rows) {
+    const t = row.trade.ticker;
+    const existing = hotByTicker.get(t);
+    if (existing) {
+      existing.score += row.score;
+      existing.tradeCount += 1;
+      if (row.trade.transaction_date > existing.lastTradeDate) existing.lastTradeDate = row.trade.transaction_date;
+    } else {
+      hotByTicker.set(t, {
+        ticker: t,
+        score: row.score,
+        tradeCount: 1,
+        topFlag: row.flags[0]?.label ?? "",
+        lastTradeDate: row.trade.transaction_date,
+      });
+    }
+  }
+  const HOT_TICKER_LIMIT = 6;
+  const hotTickers = [...hotByTicker.values()]
+    .sort((a, b) => b.score - a.score)
+    .slice(0, HOT_TICKER_LIMIT);
+
+  const hotTickerSymbols = hotTickers.map((h) => h.ticker);
+  const [{ data: hotStocks }, priceSignals] = await Promise.all([
+    supabase
+      .from("stocks")
+      .select("ticker, company_name")
+      .in("ticker", hotTickerSymbols.length ? hotTickerSymbols : ["__none__"]),
+    getPriceSignals(hotTickerSymbols),
+  ]);
+  const companyByTicker = new Map((hotStocks ?? []).map((s) => [s.ticker as string, s.company_name as string]));
+
   return (
     <div className="flex flex-1 flex-col bg-background px-6 py-10">
       <div className="mx-auto w-full max-w-3xl">
@@ -149,7 +188,76 @@ export default async function InterestingBuysPage() {
           </div>
         )}
 
-        <ul className="mt-6 divide-y divide-stone-100 card-pop accent-rail accent-performance dark:divide-stone-900">
+        {hotTickers.length > 0 && (
+          <div className="mt-8">
+            <h2 className="text-sm font-medium uppercase tracking-wide text-stone-500 dark:text-stone-400">
+              Hot stocks right now
+            </h2>
+            <p className="mt-1 text-xs text-stone-400 dark:text-stone-600">
+              The tickers with the strongest combined signal above, with where
+              the price is trading relative to its own recent range &mdash;
+              context to help you dig in, not a suggested entry price.
+            </p>
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {hotTickers.map((h) => {
+                const sig = priceSignals.get(h.ticker);
+                return (
+                  <Link
+                    key={h.ticker}
+                    href={`/stocks/${h.ticker}`}
+                    className="card-pop accent-rail accent-stocks block p-4 transition hover:-translate-y-0.5"
+                  >
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="font-heading text-base font-semibold text-stone-900 dark:text-stone-50">
+                        {h.ticker}
+                      </span>
+                      <span className="truncate text-xs text-stone-400 dark:text-stone-600">
+                        {companyByTicker.get(h.ticker) ?? ""}
+                      </span>
+                    </div>
+
+                    {sig ? (
+                      <>
+                        <div className="mt-2 text-2xl font-heading font-semibold text-stone-900 dark:text-stone-50">
+                          ${sig.latestClose.toFixed(2)}
+                        </div>
+                        <div className="text-[11px] text-stone-400 dark:text-stone-600">
+                          as of {sig.latestDate}
+                        </div>
+                        <div className="mt-2 h-1.5 w-full rounded-full bg-stone-100 dark:bg-stone-800">
+                          <div
+                            className="h-1.5 rounded-full bg-cat-stocks"
+                            style={{ width: `${Math.round(sig.rangePosition * 100)}%` }}
+                          />
+                        </div>
+                        <div className="mt-1 flex justify-between text-[11px] text-stone-400 dark:text-stone-600">
+                          <span>90d low ${sig.low90.toFixed(2)}</span>
+                          <span>90d high ${sig.high90.toFixed(2)}</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="mt-2 text-xs text-stone-400 dark:text-stone-600">
+                        Price data syncing&hellip;
+                      </div>
+                    )}
+
+                    <p className="mt-3 truncate text-xs text-stone-500 dark:text-stone-400" title={h.topFlag}>
+                      {h.topFlag}
+                      {h.tradeCount > 1 && (
+                        <span className="text-stone-400 dark:text-stone-600"> &middot; {h.tradeCount} flagged buys</span>
+                      )}
+                    </p>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <h2 className="mt-8 mb-3 text-sm font-medium uppercase tracking-wide text-stone-500 dark:text-stone-400">
+          Flagged trades
+        </h2>
+        <ul className="divide-y divide-stone-100 card-pop accent-rail accent-performance dark:divide-stone-900">
           {shown.map(({ trade: t, politician: p, flags }) => {
             const style = partyStyle(p.party);
             const r = returnByTradeId.get(t.id);
